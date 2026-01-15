@@ -1,8 +1,7 @@
 import { useRef, useEffect, useState } from "react";
 import {
     AlertTriangle,
-    Asterisk,
-    Calendar,
+
     ChevronRight,
     CloudLightning,
     Construction,
@@ -10,7 +9,7 @@ import {
     Plus,
     Users,
     TrendingUp,
-    Briefcase,
+   
     MapPin,
     Clock
 } from "lucide-react";
