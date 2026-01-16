@@ -1,4 +1,4 @@
-export type ComplaintStatus = "Pending" | "Verified" | "Assigned" | "In Progress" | "Resolved";
+export type ComplaintStatus = "submitted" | "pending" | "verified" | "assigned" | "in_progress" | "resolved";
 
 export interface Complaint {
     id: string;
@@ -6,20 +6,24 @@ export interface Complaint {
     description: string;
     category: string;
     location: string;
+    lat?: number;
+    lng?: number;
     images: string[];
     status: ComplaintStatus;
     priority: "Low" | "Medium" | "High" | "Critical";
     timeline: number; // 0 to 100
-    postedAt: string;
+    postedAt: string; // Relative time string or Date
+    created_at: string;
     author: {
         name: string;
         avatar: string;
-        role: "Citizen" | "Volunteer" | "Official";
+        role: string;
     };
     stats: {
         supports: number;
         comments: number;
         shares: number;
+        // comments: number; // Removed duplicate if present
     };
     isSupported: boolean;
     isFollowed: boolean;

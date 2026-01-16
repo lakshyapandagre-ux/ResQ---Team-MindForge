@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
     Calendar, MapPin, Heart, Share2, Bookmark,
-    User, CheckCircle2, Clock, Filter
+    User, CheckCircle2, Clock, Filter, Loader2, List, Map as MapIcon, Navigation
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,31 +12,16 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-// --- Types ---
-type EventStatus = 'live' | 'upcoming';
-type EventCategory = 'Social' | 'Health' | 'Emergency' | 'Environment' | 'Education';
+// import { CityMap } from "@/components/maps/MapComponents"; // Removed - causing issues
+import { useUserLocation } from "@/services/locationService";
+import { getDistance } from "@/lib/math";
+import { useAuth } from "@/contexts/AuthContext";
+import { db, type CivicEvent } from "@/lib/db";
 
-interface CivicEvent {
-    id: string;
-    image: string;
-    title: string;
-    organizer: string;
-    date: string;
-    time: string;
-    location: string;
-    description: string;
-    participantCount: number;
-    status: EventStatus;
-    category: EventCategory;
-    isFundraiser?: boolean;
-    targetAmount?: number;
-    raisedAmount?: number;
-    volunteerSlots?: number;
-    filledSlots?: number;
-}
+// Removed local CivicEvent to use db.ts version
 
 // --- Dummy Data ---
-const EVENTS_DATA: CivicEvent[] = [
+const FALLBACK_EVENTS: CivicEvent[] = [
     {
         id: "1",
         image: "https://images.unsplash.com/photo-1615461066841-6116e61058f5?q=80&w=1000&auto=format&fit=crop",
@@ -46,10 +31,11 @@ const EVENTS_DATA: CivicEvent[] = [
         time: "10:00 AM - 5:00 PM",
         location: "Palasia Square, Indore",
         description: "Join us to save lives. Urgent requirement for O+ and B- blood types. Refreshments provided for all donors.",
-        participantCount: 128,
         status: "live",
         category: "Health",
-        isFundraiser: false
+        lat: 22.7244,
+        lng: 75.8839,
+        participant_count: 128
     },
     {
         id: "2",
@@ -60,84 +46,57 @@ const EVENTS_DATA: CivicEvent[] = [
         time: "6:00 AM",
         location: "Rajwada Palace, Indore",
         description: "Run for a cause! All proceeds go directly to flood relief efforts in low-lying areas. 5k and 10k categories.",
-        participantCount: 450,
-        status: "upcoming",
         category: "Social",
-        isFundraiser: true,
-        targetAmount: 500000,
-        raisedAmount: 325000
-    },
-    {
-        id: "3",
-        image: "https://images.unsplash.com/photo-1542601906990-b4d3fb7d5b43?q=80&w=1000&auto=format&fit=crop",
-        title: "Tree Plantation Drive 2024",
-        organizer: "Green Indore Initiative",
-        date: "March 22, 2024",
-        time: "8:00 AM - 11:00 AM",
-        location: "Vijay Nagar Park, Indore",
-        description: "Help us plant 500 saplings this weekend. Gloves and tools will be provided. Bring your own water bottle.",
-        participantCount: 85,
-        status: "upcoming",
-        category: "Environment",
-        volunteerSlots: 50,
-        filledSlots: 32
-    },
-    {
-        id: "4",
-        image: "https://images.unsplash.com/photo-1589939705384-5185137a7f0f?q=80&w=1000&auto=format&fit=crop",
-        title: "Emergency Fire Drill & Workshop",
-        organizer: "Indore Fire Department",
-        date: "March 25, 2024",
-        time: "11:00 AM",
-        location: "Collector Office Grounds",
-        description: "Learn essential fire safety skills and extiguisher usage from professionals. Open to all citizens.",
-        participantCount: 200,
-        status: "upcoming",
-        category: "Emergency"
-    },
-    {
-        id: "5",
-        image: "https://images.unsplash.com/photo-1616634358826-6136d8d85f8f?q=80&w=1000&auto=format&fit=crop",
-        title: "Clean Indore Campaign",
-        organizer: "Swachh Bharat Mission",
-        date: "Every Sunday",
-        time: "7:00 AM",
-        location: "Bhawarkua Main Road",
-        description: "Let's keep our city No. 1! Join the weekly cleaning drive. This week's focus: Plastic waste reduction.",
-        participantCount: 1500,
-        status: "live",
-        category: "Environment",
-        volunteerSlots: 100,
-        filledSlots: 85
-    },
-    {
-        id: "6",
-        image: "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?q=80&w=1000&auto=format&fit=crop",
-        title: "Free General Health Checkup",
-        organizer: "MY Hospital Team",
-        date: "Tomorrow",
-        time: "10:00 AM - 2:00 PM",
-        location: "Annapurna Temple Complex",
-        description: "Free consultation for BP, Diabetes, and General Health. Medicine distribution for seniors.",
-        participantCount: 60,
-        status: "upcoming",
-        category: "Health"
+        lat: 22.7186,
+        lng: 75.8552,
+        participant_count: 450,
+        status: "upcoming"
     }
 ];
 
 export function Events() {
+    const [events, setEvents] = useState<CivicEvent[]>([]);
     const [activeFilter, setActiveFilter] = useState<string>("All");
+    const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
+    const [, setLoading] = useState(true);
+    const { location: userLoc, refreshLocation } = useUserLocation();
 
-    const filters = ["All", "Live Now", "Upcoming", "Volunteering", "Fundraising"];
+    useEffect(() => {
+        const fetchEvents = async () => {
+            try {
+                const data = await db.getEvents();
+                setEvents(data.length > 0 ? data : FALLBACK_EVENTS);
+            } catch (error) {
+                console.error("Failed to fetch events:", error);
+                setEvents(FALLBACK_EVENTS);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchEvents();
+    }, []);
 
-    const filteredEvents = EVENTS_DATA.filter(event => {
+    const filters = ["All", "Near Me", "Live Now", "Upcoming", "Volunteering"];
+
+    const filteredEvents = events.map(e => ({
+        ...e,
+        distance: userLoc.lat && userLoc.lng ? getDistance(userLoc.lat, userLoc.lng, e.lat, e.lng) : undefined
+    })).filter(event => {
         if (activeFilter === "All") return true;
+        if (activeFilter === "Near Me") {
+            if (!event.distance) return false;
+            return event.distance <= 5;
+        }
         if (activeFilter === "Live Now") return event.status === "live";
         if (activeFilter === "Upcoming") return event.status === "upcoming";
-        if (activeFilter === "Volunteering") return event.volunteerSlots !== undefined;
-        if (activeFilter === "Fundraising") return event.isFundraiser;
+        if (activeFilter === "Volunteering") return event.category.toLowerCase().includes("volunteer");
         return true;
     });
+
+    // Sort by distance if location available
+    if (userLoc.lat && userLoc.lng) {
+        filteredEvents.sort((a, b) => (a.distance || 9999) - (b.distance || 9999));
+    }
 
     return (
         <div className="max-w-4xl mx-auto pb-24 animate-in fade-in duration-500 px-4 md:px-6">
@@ -152,6 +111,28 @@ export function Events() {
                         <p className="text-muted-foreground mt-2 text-sm md:text-base">
                             Stay connected with social drives, health camps & emergency drills in Indore.
                         </p>
+                    </div>
+
+                    {/* View Toggle */}
+                    <div className="flex bg-slate-100 rounded-lg p-1 shrink-0 self-start md:self-auto border border-slate-200">
+                        <button
+                            onClick={() => setViewMode('list')}
+                            className={cn(
+                                "flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all",
+                                viewMode === 'list' ? "bg-white shadow text-slate-900" : "text-slate-500 hover:text-slate-900"
+                            )}
+                        >
+                            <List className="h-4 w-4" /> List
+                        </button>
+                        <button
+                            onClick={() => setViewMode('map')}
+                            className={cn(
+                                "flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all",
+                                viewMode === 'map' ? "bg-white shadow text-slate-900" : "text-slate-500 hover:text-slate-900"
+                            )}
+                        >
+                            <MapIcon className="h-4 w-4" /> Map
+                        </button>
                     </div>
                 </div>
 
@@ -168,9 +149,13 @@ export function Events() {
                                     ? "bg-slate-900 border-slate-900 hover:bg-slate-800"
                                     : "bg-white border-slate-200 hover:bg-slate-50 text-slate-700"
                             )}
-                            onClick={() => setActiveFilter(filter)}
+                            onClick={() => {
+                                setActiveFilter(filter);
+                                if (filter === "Near Me") refreshLocation();
+                            }}
                         >
                             {filter === "Live Now" && <span className="mr-2 inline-block w-2 h-2 rounded-full bg-red-500 animate-pulse" />}
+                            {filter === "Near Me" && <Navigation className="mr-1 h-3 w-3" />}
                             {filter}
                         </Badge>
                     ))}
@@ -178,11 +163,34 @@ export function Events() {
             </div>
 
             {/* Events Feed */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {filteredEvents.map(event => (
-                    <EventCard key={event.id} event={event} />
-                ))}
-            </div>
+            {viewMode === 'list' ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    {filteredEvents.map(event => (
+                        <EventCard key={event.id} event={event} />
+                    ))}
+                </div>
+            ) : (
+                <div className="animate-in fade-in zoom-in-95 duration-500 bg-white p-4 rounded-xl border shadow-sm text-center py-20">
+                    <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <MapIcon className="h-8 w-8 text-slate-400" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-slate-900">Map View Temporarily Unavailable</h3>
+                    <p className="text-sm text-muted-foreground mt-2">Please use list view to see all events.</p>
+                </div>
+                {/* <div className="animate-in fade-in zoom-in-95 duration-500 bg-white p-1 rounded-xl border shadow-sm">
+                    <CityMap
+                        markers={filteredEvents.map(e => ({
+                            id: e.id,
+                            lat: e.lat,
+                            lng: e.lng,
+                            title: e.title,
+                            description: e.location,
+                            type: 'event'
+                        }))}
+                        height="600px"
+                    />
+                </div> */}
+            )}
 
             {filteredEvents.length === 0 && (
                 <div className="text-center py-20">
@@ -198,7 +206,7 @@ export function Events() {
     );
 }
 
-function EventCard({ event }: { event: CivicEvent }) {
+function EventCard({ event }: { event: any }) {
     const [isLiked, setIsLiked] = useState(false);
     const [isSaved, setIsSaved] = useState(false);
 
@@ -212,6 +220,14 @@ function EventCard({ event }: { event: CivicEvent }) {
                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+
+                {/* Distance Badge */}
+                {event.distance !== undefined && (
+                    <Badge variant="outline" className="absolute top-3 right-3 bg-white/90 backdrop-blur text-slate-900 font-bold border-0 shadow-sm z-10 flex items-center gap-1">
+                        <Navigation className="h-3 w-3 text-teal-600" />
+                        {event.distance.toFixed(1)} km
+                    </Badge>
+                )}
 
                 {/* Status Badges */}
                 <div className="absolute top-3 left-3 flex flex-wrap gap-2">
@@ -304,34 +320,80 @@ function EventCard({ event }: { event: CivicEvent }) {
 
 function EventRegistrationModal({ event }: { event: CivicEvent }) {
     const [isOpen, setIsOpen] = useState(false);
+    const [isRegistered, setIsRegistered] = useState(false);
+    const [checking, setChecking] = useState(false);
+    const { user, profile } = useAuth();
 
-    const handleRegister = (e: React.FormEvent) => {
+    useEffect(() => {
+        if (user && isOpen) {
+            checkRegistration();
+        }
+    }, [user, isOpen]);
+
+    const checkRegistration = async () => {
+        setChecking(true);
+        try {
+            const registered = await db.isRegisteredForEvent(event.id, user!.id);
+            setIsRegistered(registered);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setChecking(false);
+        }
+    };
+
+    const handleRegister = async (e: React.FormEvent) => {
         e.preventDefault();
-        setIsOpen(false);
-        toast.success("Successfully Registered! 🎉", {
-            description: `You're all set for ${event.title}. We've sent details to your phone.`
-        });
+        if (!user) {
+            toast.error("Please login to register");
+            // Assuming there is a login path or modal
+            return;
+        }
+
+        try {
+            await db.registerForEvent(event.id, user.id);
+            setIsRegistered(true);
+            toast.success("Successfully Registered! 🎉", {
+                description: `You're all set for ${event.title}.`
+            });
+            setTimeout(() => setIsOpen(false), 1500);
+        } catch (error) {
+            toast.error("Registration failed. Please try again.");
+        }
     };
 
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
-                <Button className="w-full bg-slate-900 hover:bg-slate-800 text-white shadow-md shadow-slate-200">
-                    {event.status === 'live' ? 'Join Now' : 'Register'}
+                <Button
+                    className={cn(
+                        "w-full shadow-md",
+                        isRegistered ? "bg-green-600 hover:bg-green-700" : "bg-slate-900 hover:bg-slate-800"
+                    )}
+                    disabled={isRegistered}
+                >
+                    {isRegistered ? (
+                        <><CheckCircle2 className="mr-2 h-4 w-4" /> Registered</>
+                    ) : (
+                        event.status === 'live' ? 'Join Now' : 'Register'
+                    )}
                 </Button>
             </DialogTrigger>
             <DialogContent className="max-w-md mx-4 rounded-2xl">
                 <DialogHeader>
-                    <DialogTitle>Register for Event</DialogTitle>
+                    <DialogTitle>{isRegistered ? "You're Registered!" : "Register for Event"}</DialogTitle>
                     <DialogDescription>
-                        Confirm your spot for <strong>{event.title}</strong>
+                        {isRegistered
+                            ? `You have already confirmed your spot for ${event.title}.`
+                            : `Confirm your spot for ${event.title}`
+                        }
                     </DialogDescription>
                 </DialogHeader>
 
                 <div className="py-4">
                     <div className="flex items-center gap-4 mb-6 p-4 bg-slate-50 rounded-xl border border-slate-100">
                         <div className="h-12 w-12 rounded-lg bg-slate-200 overflow-hidden shrink-0">
-                            <img src={event.image} className="h-full w-full object-cover" alt="" />
+                            <img src={event.image || "https://images.unsplash.com/photo-1542601906990-b4d3fb7d5b43?q=80&w=1000&auto=format&fit=crop"} className="h-full w-full object-cover" alt="" />
                         </div>
                         <div className="min-w-0">
                             <p className="font-semibold text-sm truncate">{event.date} • {event.time}</p>
@@ -339,27 +401,29 @@ function EventRegistrationModal({ event }: { event: CivicEvent }) {
                         </div>
                     </div>
 
-                    <form onSubmit={handleRegister} className="space-y-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="name">Full Name</Label>
-                            <Input id="name" placeholder="Enter your name" required />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="phone">Phone Number</Label>
-                            <Input id="phone" type="tel" placeholder="+91 98765 43210" required />
-                        </div>
+                    {!isRegistered && (
+                        <form onSubmit={handleRegister} className="space-y-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="name">Full Name</Label>
+                                <Input id="name" defaultValue={profile?.name || ""} placeholder="Enter your name" required />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="phone">Phone Number</Label>
+                                <Input id="phone" type="tel" defaultValue={profile?.phone || ""} placeholder="+91 98765 43210" required />
+                            </div>
 
-                        <div className="flex items-start gap-2 pt-2">
-                            <CheckCircle2 className="h-4 w-4 text-green-600 mt-0.5 shrink-0" />
-                            <span className="text-xs text-muted-foreground">
-                                I agree to receive event updates and reminders via WhatsApp/SMS.
-                            </span>
-                        </div>
+                            <div className="flex items-start gap-2 pt-2">
+                                <CheckCircle2 className="h-4 w-4 text-green-600 mt-0.5 shrink-0" />
+                                <span className="text-xs text-muted-foreground">
+                                    I agree to receive event updates and reminders via WhatsApp/SMS.
+                                </span>
+                            </div>
 
-                        <Button type="submit" className="w-full mt-2 rounded-xl">
-                            Confirm Registration
-                        </Button>
-                    </form>
+                            <Button type="submit" className="w-full mt-2 rounded-xl" disabled={checking}>
+                                {checking ? <Loader2 className="h-4 w-4 animate-spin" /> : "Confirm Registration"}
+                            </Button>
+                        </form>
+                    )}
                 </div>
             </DialogContent>
         </Dialog>

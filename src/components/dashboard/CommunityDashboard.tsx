@@ -1,74 +1,51 @@
 import { useRef, useEffect, useState } from "react";
 import {
-    AlertTriangle,
-
-    ChevronRight,
-    CloudLightning,
-    Construction,
     Megaphone,
+    TrendingUp,
     Plus,
     Users,
-    TrendingUp,
-   
-    MapPin,
-    Clock
+    Gift
 } from "lucide-react";
-import { useReports } from "@/hooks/use-reports";
-import { useVolunteers } from "@/hooks/use-volunteers";
 import SplitText from "@/components/SplitText";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import gsap from "gsap";
 import { useNavigate } from "react-router-dom";
 import { QuickActions } from "@/components/dashboard/QuickActions";
 import { db } from "@/lib/db";
 import { supabase } from "@/lib/supabase";
-import { cn } from "@/lib/utils";
 
-// --- Components for the new design ---
+import { CityStatusBar } from "./CityStatusBar";
+import { ImpactPanel } from "./ImpactPanel";
+import { CityAlertTimeline } from "./CityAlertTimeline";
+import { CommunityZone } from "./CommunityZone";
+import { CityHeatmap } from "@/components/maps/CityHeatmap";
+import { JoinSquadModal } from "./JoinSquadModal";
+import { CityHeroLeaderboard } from "./CityHeroLeaderboard";
+import { AnnouncementsPanel } from "./AnnouncementsPanel";
+// ... (imports)
 
-function HeroCard() {
-    const navigate = useNavigate();
-    return (
-        <div className="relative w-full overflow-hidden rounded-[2.5rem] shadow-xl shadow-emerald-900/20 group">
-            {/* Background Image */}
-            <div className="absolute inset-0">
-                <img
-                    src="https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=800&auto=format&fit=crop&q=80"
-                    alt="City Skyline"
-                    className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
-                />
-                <div className="absolute inset-0 bg-gradient-to-br from-teal-900/90 via-emerald-800/80 to-transparent" />
-            </div>
+// ... inside render buffer ...
+{/* Dynamic Content Grid */ }
+<div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
 
-            {/* Content */}
-            <div className="relative z-10 flex flex-col gap-6 p-8 text-white">
-                <div className="flex items-center gap-2">
-                    <span className="flex h-2 w-2 animate-pulse rounded-full bg-green-400"></span>
-                    <span className="text-xs font-medium uppercase tracking-wider text-emerald-100/90 bg-black/20 px-2 py-1 rounded-full backdrop-blur-sm">System Live</span>
-                </div>
+    {/* LEFT: Live Alerts Timeline (7 cols) */}
+    <div className="lg:col-span-7 space-y-4">
+        <CityAlertTimeline />
+    </div>
 
-                <div className="space-y-2 mt-2">
-                    <h2 className="text-3xl font-bold leading-tight md:text-4xl text-white drop-shadow-sm">Stay Connected</h2>
-                    <p className="max-w-[90%] text-sm text-emerald-50/90 md:text-base font-medium leading-relaxed">
-                        Report issues, track status, and help make our city safer for everyone.
-                    </p>
-                </div>
+    {/* RIGHT: Community Zone (5 cols) */}
+    <div className="lg:col-span-5 space-y-6">
+        <CommunityZone />
+    </div>
+</div>
 
-                <Button
-                    variant="secondary"
-                    className="group mt-4 w-fit rounded-full bg-white/95 px-6 py-6 text-teal-800 hover:bg-white border-none shadow-lg backdrop-blur-md"
-                    onClick={() => navigate('/complaints')}
-                >
-                    <Plus className="mr-2 h-5 w-5 rounded-full bg-teal-800 p-0.5 text-white transition-transform group-hover:rotate-90" />
-                    <span className="text-base font-semibold">Report Now</span>
-                    <ChevronRight className="ml-2 h-4 w-4 opacity-50 transition-transform group-hover:translate-x-1" />
-                </Button>
-            </div>
-        </div>
-    );
-}
+{/* City Hero Leaderboard */ }
+<CityHeroLeaderboard />
+
+{/* Join the Squad - Bottom Call to Action */ }
+<JoinSquadCard count={250} />
+
 
 
 
@@ -97,6 +74,7 @@ function ActivityHub({ stats }: { stats: { points: number, reports: number, reso
     const score = rate;
     const circumference = 2 * Math.PI * 40; // r=40
     const strokeDashoffset = circumference - (score / 100) * circumference;
+    const navigate = useNavigate();
 
     return (
         <div className="rounded-[2.5rem] bg-white p-6 shadow-sm dark:bg-slate-900 border border-slate-100 dark:border-slate-800 relative overflow-hidden">
@@ -147,8 +125,10 @@ function ActivityHub({ stats }: { stats: { points: number, reports: number, reso
 
                 {/* Legend */}
                 <div className="grid grid-cols-2 gap-x-12 gap-y-4">
-                    <div className="flex flex-col">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Impact</span>
+                    <div className="flex flex-col group cursor-pointer transition-opacity hover:opacity-80" onClick={() => navigate('/rewards')}>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1 group-hover:text-teal-600 transition-colors">
+                            Total Impact <Gift className="w-3 h-3 mb-0.5" />
+                        </span>
                         <span className="text-2xl font-bold text-teal-600">{stats.points} Points</span>
                     </div>
                     <div className="col-span-2 h-[1px] w-full bg-slate-100 dark:bg-slate-800"></div>
@@ -166,121 +146,67 @@ function ActivityHub({ stats }: { stats: { points: number, reports: number, reso
     );
 }
 
-function AlertItem({ report, image }: { report: any, image?: string }) {
-    const isCritical = report.priority === 'critical' || report.priority === 'high';
-    const bg = isCritical ? 'bg-red-50' : 'bg-blue-50';
-    const iconColor = isCritical ? 'text-red-500' : 'text-blue-500';
-    const Icon = isCritical ? AlertTriangle : CloudLightning;
-
-    return (
-        <div className="group flex cursor-pointer items-stretch gap-4 rounded-[2rem] bg-white p-3 shadow-sm transition-all hover:translate-y-[-2px] hover:shadow-md dark:bg-slate-900 border border-slate-100 dark:border-slate-800 overflow-hidden">
-            {/* Image Thumbnail */}
-            <div className="relative w-24 h-24 shrink-0 rounded-2xl overflow-hidden bg-slate-100">
-                {image ? (
-                    <img src={image} alt="Alert" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" />
-                ) : (
-                    <div className={cn("h-full w-full flex items-center justify-center", bg)}>
-                        <Icon className={cn("h-8 w-8", iconColor)} />
-                    </div>
-                )}
-                <div className={cn("absolute top-2 left-2 p-1 rounded-full bg-white/90 backdrop-blur-sm shadow-sm", iconColor)}>
-                    <Icon className="h-3 w-3" />
-                </div>
-            </div>
-
-            <div className="flex-1 py-1 pr-2 flex flex-col justify-between">
-                <div>
-                    <div className="flex items-center justify-between mb-1">
-                        <Badge variant="secondary" className={cn("text-[10px] font-bold uppercase tracking-wider px-2 h-5", isCritical ? "bg-red-50 text-red-600" : "bg-blue-50 text-blue-600")}>
-                            {report.category || "Alert"}
-                        </Badge>
-                        <span className="text-[10px] font-medium text-slate-400 flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
-                            {new Date(report.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                    </div>
-                    <h4 className="font-bold text-slate-800 dark:text-slate-100 line-clamp-1 text-sm">{report.title}</h4>
-                    <p className="mt-1 line-clamp-2 text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                        {report.description || "Emergency report near the reported area. Please proceed with caution."}
-                    </p>
-                </div>
-
-                <div className="flex items-center gap-1 text-[10px] text-slate-400 mt-2">
-                    <MapPin className="h-3 w-3" />
-                    <span className="truncate max-w-[150px]">Downtown District</span>
-                </div>
-            </div>
-        </div>
-    );
-}
 
 function JoinSquadCard({ count }: { count: number }) {
-    const navigate = useNavigate();
     return (
-        <div
-            onClick={() => navigate('/join-squad')}
-            className="relative overflow-hidden rounded-[2.5rem] shadow-xl group cursor-pointer"
-        >
-            {/* Background Image */}
-            <div className="absolute inset-0">
-                <img
-                    src="https://images.unsplash.com/photo-1559027615-cd4628902d4a?w=800&auto=format&fit=crop&q=80"
-                    alt="Volunteers"
-                    className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
-                />
-                <div className="absolute inset-0 bg-slate-900/80 group-hover:bg-slate-900/70 transition-colors" />
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/50 to-transparent" />
-            </div>
-
-            <div className="relative z-10 flex flex-col p-8 text-white h-full">
-                <div className="flex items-center justify-between mb-8">
-                    <div>
-                        <h3 className="text-2xl font-bold text-white">Join the Squad</h3>
-                        <div className="mt-2 flex items-center gap-2">
-                            <div className="flex -space-x-3">
-                                <Avatar className="border-2 border-slate-900 w-8 h-8">
-                                    <AvatarImage src="https://i.pravatar.cc/100?img=1" />
-                                    <AvatarFallback>V1</AvatarFallback>
-                                </Avatar>
-                                <Avatar className="border-2 border-slate-900 w-8 h-8">
-                                    <AvatarImage src="https://i.pravatar.cc/100?img=5" />
-                                    <AvatarFallback>V2</AvatarFallback>
-                                </Avatar>
-                                <Avatar className="border-2 border-slate-900 w-8 h-8">
-                                    <AvatarImage src="https://i.pravatar.cc/100?img=8" />
-                                    <AvatarFallback>V3</AvatarFallback>
-                                </Avatar>
-                            </div>
-                            <span className="text-sm font-medium text-slate-300 ml-1">{count}+ locals active</span>
-                        </div>
-                    </div>
+        <JoinSquadModal>
+            <div
+                className="relative overflow-hidden rounded-[2.5rem] shadow-xl group cursor-pointer w-full text-left"
+            >
+                {/* Background Image */}
+                <div className="absolute inset-0">
+                    <img
+                        src="https://images.unsplash.com/photo-1559027615-cd4628902d4a?w=800&auto=format&fit=crop&q=80"
+                        alt="Volunteers"
+                        className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-slate-900/80 group-hover:bg-slate-900/70 transition-colors" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/50 to-transparent" />
                 </div>
 
-                <Button className="mt-auto w-full rounded-xl bg-white py-6 text-slate-900 hover:bg-teal-50 border-none shadow-lg">
-                    <span className="text-sm font-bold uppercase tracking-widest">Volunteer Now</span>
-                    <Users className="ml-2 h-4 w-4" />
-                </Button>
+                <div className="relative z-10 flex flex-col p-8 text-white h-full">
+                    <div className="flex items-center justify-between mb-8">
+                        <div>
+                            <h3 className="text-2xl font-bold text-white">Join the Squad</h3>
+                            <div className="mt-2 flex items-center gap-2">
+                                <div className="flex -space-x-3">
+                                    <Avatar className="border-2 border-slate-900 w-8 h-8">
+                                        <AvatarImage src="https://i.pravatar.cc/100?img=1" />
+                                        <AvatarFallback>V1</AvatarFallback>
+                                    </Avatar>
+                                    <Avatar className="border-2 border-slate-900 w-8 h-8">
+                                        <AvatarImage src="https://i.pravatar.cc/100?img=5" />
+                                        <AvatarFallback>V2</AvatarFallback>
+                                    </Avatar>
+                                    <Avatar className="border-2 border-slate-900 w-8 h-8">
+                                        <AvatarImage src="https://i.pravatar.cc/100?img=8" />
+                                        <AvatarFallback>V3</AvatarFallback>
+                                    </Avatar>
+                                </div>
+                                <span className="text-sm font-medium text-slate-300 ml-1">{count}+ locals active</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <Button className="mt-auto w-full rounded-xl bg-white py-6 text-slate-900 hover:bg-teal-50 border-none shadow-lg">
+                        <span className="text-sm font-bold uppercase tracking-widest">Volunteer Now</span>
+                        <Users className="ml-2 h-4 w-4" />
+                    </Button>
+                </div>
             </div>
-        </div>
+        </JoinSquadModal>
     );
 }
 
-export function CommunityDashboard() {
-    const { data: reports, isLoading: reportsLoading } = useReports();
-    const { data: volunteers } = useVolunteers();
-    const navigate = useNavigate();
-    const [profile, setProfile] = useState<any>(null);
+import { useAuth } from "@/contexts/AuthContext";
 
-    useEffect(() => {
-        const fetchUser = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (user) {
-                const data = await db.getOrCreateProfile(user);
-                setProfile(data);
-            }
-        };
-        fetchUser();
-    }, []);
+export function CommunityDashboard() {
+    // const { data: reports, isLoading: reportsLoading } = useReports(); // Unused
+    // const { data: volunteers } = useVolunteers(); // Unused
+    const navigate = useNavigate();
+    const { profile } = useAuth();
+
+    // Remove local fetch, rely on context
 
     // Animation on mount
     const containerRef = useRef<HTMLDivElement>(null);
@@ -293,13 +219,10 @@ export function CommunityDashboard() {
         }
     }, []);
 
-    // Filter critical reports for Alerts
-    const criticalReports = reports?.filter(r => r.priority === 'high' || r.priority === 'critical').slice(0, 3) || [];
-    const activeVolunteersCount = volunteers?.length || 500;
 
     return (
-        <div className="min-h-screen bg-slate-50/50 pb-32 pt-6 dark:bg-slate-950 font-sans selection:bg-teal-100">
-            <div ref={containerRef} className="container mx-auto max-w-md space-y-8 px-6 md:max-w-2xl lg:max-w-4xl">
+        <div className="min-h-screen bg-slate-50/50 pb-24 pt-4 md:pt-6 dark:bg-slate-950 font-sans selection:bg-teal-100">
+            <div ref={containerRef} className="w-full max-w-7xl mx-auto space-y-6 md:space-y-8 px-4 sm:px-6 md:px-8">
 
                 {/* Header */}
                 <div className="flex items-center justify-between">
@@ -324,7 +247,13 @@ export function CommunityDashboard() {
                 </div>
 
                 {/* Hero */}
-                <HeroCard />
+                <CityStatusBar />
+
+                {/* Announcements Panel (Added) */}
+                <AnnouncementsPanel />
+
+                {/* Impact Panel */}
+                <ImpactPanel profile={profile} />
 
                 {/* Quick Actions */}
                 <QuickActions />
@@ -370,72 +299,28 @@ export function CommunityDashboard() {
                     resolved: profile ? profile.resolved_count : 0
                 }} />
 
-                {/* City Alerts */}
-                <div>
-                    <div className="mb-4 flex items-center justify-between px-1">
-                        <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">City Alerts</h3>
-                        <div className="flex cursor-pointer items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-teal-600" onClick={() => navigate('/city-alerts')}>
-                            See All <ChevronRight className="h-3 w-3" />
-                        </div>
-                    </div>
-                    <div className="space-y-4">
-                        {reportsLoading ? (
-                            <div className="h-24 w-full animate-pulse rounded-[2rem] bg-white dark:bg-slate-900 shadow-sm" />
-                        ) : criticalReports.length > 0 ? (
-                            criticalReports.map((report, idx) => (
-                                <AlertItem
-                                    key={report.id}
-                                    report={report}
-                                    image={idx === 0 ? "https://images.unsplash.com/photo-1584282470729-0524ba3acb8c?w=200&auto=format&fit=crop&q=60" : undefined}
-                                />
-                            ))
-                        ) : (
-                            // Show dummy data if no real critical alerts, to match the vibe
-                            <>
-                                <div className="group flex cursor-pointer items-stretch gap-4 rounded-[2rem] bg-white p-3 shadow-sm transition-all hover:translate-y-[-2px] hover:shadow-md dark:bg-slate-900 border border-slate-100 dark:border-slate-800 overflow-hidden">
-                                    <div className="relative w-24 h-24 shrink-0 rounded-2xl overflow-hidden">
-                                        <img src="https://images.unsplash.com/photo-1584282470729-0524ba3acb8c?w=200&auto=format&fit=crop&q=60" alt="Construction" className="h-full w-full object-cover" />
-                                        <div className="absolute top-2 left-2 p-1 rounded-full bg-white/90">
-                                            <Construction className="h-3 w-3 text-orange-500" />
-                                        </div>
-                                    </div>
-                                    <div className="flex-1 py-1 pr-2 flex flex-col justify-between">
-                                        <div>
-                                            <div className="flex items-center justify-between mb-1">
-                                                <Badge variant="secondary" className="bg-orange-50 text-orange-600 text-[10px] font-bold uppercase tracking-wider px-2 h-5">Road Work</Badge>
-                                                <span className="text-[10px] font-medium text-slate-400">1h ago</span>
-                                            </div>
-                                            <h4 className="font-bold text-slate-800 dark:text-slate-100 text-sm">Road Closure: 5th Ave</h4>
-                                            <p className="mt-1 line-clamp-2 text-xs text-slate-500 dark:text-slate-400">Emergency repairs near the main intersection.</p>
-                                        </div>
-                                    </div>
-                                </div>
+                {/* Dynamic Content Grid */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
 
-                                <div className="group flex cursor-pointer items-stretch gap-4 rounded-[2rem] bg-white p-3 shadow-sm transition-all hover:translate-y-[-2px] hover:shadow-md dark:bg-slate-900 border border-slate-100 dark:border-slate-800 overflow-hidden">
-                                    <div className="relative w-24 h-24 shrink-0 rounded-2xl overflow-hidden">
-                                        <img src="https://images.unsplash.com/photo-1515694346937-94d85e41e6f0?w=200&auto=format&fit=crop&q=60" alt="Rain" className="h-full w-full object-cover" />
-                                        <div className="absolute top-2 left-2 p-1 rounded-full bg-white/90">
-                                            <CloudLightning className="h-3 w-3 text-blue-500" />
-                                        </div>
-                                    </div>
-                                    <div className="flex-1 py-1 pr-2 flex flex-col justify-between">
-                                        <div>
-                                            <div className="flex items-center justify-between mb-1">
-                                                <Badge variant="secondary" className="bg-blue-50 text-blue-600 text-[10px] font-bold uppercase tracking-wider px-2 h-5">Weather</Badge>
-                                                <span className="text-[10px] font-medium text-slate-400">2h ago</span>
-                                            </div>
-                                            <h4 className="font-bold text-slate-800 dark:text-slate-100 text-sm">Heavy Rain Warning</h4>
-                                            <p className="mt-1 line-clamp-2 text-xs text-slate-500 dark:text-slate-400">Flash flood warning in low lying areas next 3 hours.</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </>
-                        )}
+                    {/* LEFT: Live Alerts Timeline (7 cols) */}
+                    <div className="lg:col-span-7 space-y-8">
+                        {/* Heatmap Section */}
+                        <CityHeatmap />
+
+                        <CityAlertTimeline />
+                    </div>
+
+                    {/* RIGHT: Community Zone (5 cols) */}
+                    <div className="lg:col-span-5 space-y-6">
+                        <CommunityZone />
                     </div>
                 </div>
 
-                {/* Join the Squad */}
-                <JoinSquadCard count={activeVolunteersCount} />
+                {/* City Hero Leaderboard */}
+                <CityHeroLeaderboard />
+
+                {/* Join the Squad - Bottom Call to Action */}
+                <JoinSquadCard count={250} />
 
                 {/* Floating Action Button for Mobile */}
                 <div className="fixed bottom-24 right-6 z-40 md:hidden pointer-events-none">

@@ -1,0 +1,119 @@
+import { useState, useEffect } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import { supabase } from "@/lib/supabase";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Loader2, Shield } from "lucide-react";
+import { toast } from "sonner";
+import { motion } from "framer-motion";
+import { useAuth } from "@/contexts/AuthContext";
+
+export function Login() {
+    const navigate = useNavigate();
+    const { user, profile, loading: authLoading } = useAuth();
+    const [loading, setLoading] = useState(false);
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+
+    // Redirect authenticated users with loaded profiles
+    useEffect(() => {
+        if (!authLoading && user && profile) {
+            navigate('/', { replace: true });
+        }
+    }, [user, profile, authLoading, navigate]);
+
+    const handleLogin = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setLoading(true);
+
+        try {
+            const { error } = await supabase.auth.signInWithPassword({
+                email,
+                password
+            });
+
+            if (error) throw error;
+
+            toast.success("Login successful!");
+
+            // Don't navigate immediately - let the useEffect handle it after profile loads
+
+        } catch (error: any) {
+            toast.error(error.message || "Failed to login");
+            setLoading(false);
+        }
+        // Don't set loading to false on success - keep showing loader until redirect
+    };
+
+
+    return (
+        <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 p-4 relative overflow-hidden">
+            {/* Background Decor */}
+            <div className="absolute top-0 left-0 w-96 h-96 bg-teal-500/10 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2" />
+            <div className="absolute bottom-0 right-0 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl translate-x-1/2 translate-y-1/2" />
+
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 p-8 relative z-10"
+            >
+                <div className="flex justify-center mb-6">
+                    <div className="h-12 w-12 bg-gradient-to-tr from-teal-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg transform rotate-3">
+                        <Shield className="h-7 w-7 text-white" />
+                    </div>
+                </div>
+
+                <div className="text-center mb-8">
+                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Welcome Back</h1>
+                    <p className="text-slate-500 dark:text-slate-400">Sign in to continue your civic journey</p>
+                </div>
+
+                <form onSubmit={handleLogin} className="space-y-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="email">Email address</Label>
+                        <Input
+                            id="email"
+                            type="email"
+                            placeholder="citizen@example.com"
+                            required
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            className="h-11 rounded-lg"
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <div className="flex justify-between items-center">
+                            <Label htmlFor="password">Password</Label>
+                            <Link to="/forgot-password" className="text-xs font-medium text-teal-600 hover:text-teal-700">Forgot?</Link>
+                        </div>
+                        <Input
+                            id="password"
+                            type="password"
+                            placeholder="••••••••"
+                            required
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            className="h-11 rounded-lg"
+                        />
+                    </div>
+
+                    <Button
+                        type="submit"
+                        disabled={loading}
+                        className="w-full h-11 rounded-lg bg-slate-900 hover:bg-slate-800 text-white font-medium"
+                    >
+                        {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Sign In"}
+                    </Button>
+                </form>
+
+                <div className="mt-6 text-center text-sm text-slate-500">
+                    Don't have an account?
+                    <Link to="/signup" className="ml-1 font-bold text-teal-600 hover:underline">
+                        Join Now
+                    </Link>
+                </div>
+            </motion.div>
+        </div>
+    );
+}

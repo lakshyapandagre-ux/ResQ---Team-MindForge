@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { formatDistanceToNow } from "date-fns";
 import {
     Menu,
     Bell,
@@ -16,6 +17,8 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { db } from "@/lib/db";
+import { supabase } from "@/lib/supabase";
 import type { AppMode } from '@/types';
 import {
     DropdownMenu,
@@ -32,6 +35,8 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useAuth } from "@/contexts/AuthContext";
+import { Link } from "react-router-dom";
 
 interface HeaderProps {
     mode: AppMode;
@@ -40,6 +45,7 @@ interface HeaderProps {
 }
 
 export function Header({ mode, onMenuToggle }: Omit<HeaderProps, 'onModeChange'>) {
+    const { profile, signOut } = useAuth();
     const [theme, setTheme] = useState<'light' | 'dark'>(() => {
         if (typeof window !== 'undefined') {
             return (localStorage.getItem('theme') as 'light' | 'dark') || 'light';
@@ -62,18 +68,77 @@ export function Header({ mode, onMenuToggle }: Omit<HeaderProps, 'onModeChange'>
         setTheme(prev => prev === 'light' ? 'dark' : 'light');
     };
 
-    // Mock Data
-    const notifications = [
-        { id: 1, title: 'Complaint Resolved', desc: 'Pot hole at Main St fixed', type: 'resolved', time: '2h ago', icon: CheckCircle2, color: 'text-green-500' },
-        { id: 2, title: 'Event Reminder', desc: 'Safety Drill tomorrow at 10 AM', type: 'reminder', time: '5h ago', icon: CalendarClock, color: 'text-blue-500' },
-        { id: 3, title: 'Reward Points', desc: 'You earned 50 pts for reporting', type: 'reward', time: '1d ago', icon: Trophy, color: 'text-amber-500' },
-    ];
+    // Notifications State
+    const [notifications, setNotifications] = useState<any[]>([]);
+    const [unreadCount, setUnreadCount] = useState(0);
 
-    const userStats = {
-        complaints: 12,
-        resolved: 8,
-        points: 1250,
-        role: 'Citizen'
+    const getNotificationStyle = (type: string) => {
+        switch (type) {
+            case 'resolved': return { icon: CheckCircle2, color: 'text-green-500' };
+            case 'reminder': return { icon: CalendarClock, color: 'text-blue-500' };
+            case 'reward': return { icon: Trophy, color: 'text-amber-500' };
+            case 'alert': return { icon: Flame, color: 'text-red-500' };
+            default: return { icon: Bell, color: 'text-slate-500' };
+        }
+    };
+
+    useEffect(() => {
+        if (profile?.id) {
+            fetchNotifications();
+
+            // Subscribe
+            const channel = supabase
+                .channel(`notifications:${profile.id}`)
+                .on('postgres_changes', {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'notifications',
+                    filter: `user_id=eq.${profile.id}`
+                }, () => {
+                    fetchNotifications();
+                    // Optional: Play sound or show toast
+                })
+                .subscribe();
+
+            return () => {
+                supabase.removeChannel(channel);
+            };
+        }
+    }, [profile?.id]);
+
+    const fetchNotifications = async () => {
+        if (!profile?.id) return;
+        try {
+            const data = await db.getNotifications(profile.id);
+            // Transform for UI
+            const mapped = data.map((n: any) => ({
+                id: n.id,
+                title: n.title,
+                desc: n.message,
+                type: n.type,
+                read: n.read,
+                time: formatDistanceToNow(new Date(n.created_at), { addSuffix: true }),
+                // Visuals based on type
+                ...getNotificationStyle(n.type)
+            }));
+            setNotifications(mapped);
+            setUnreadCount(mapped.filter((n: any) => !n.read).length);
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
+    const markAsRead = async () => {
+        if (unreadCount === 0) return;
+        // Optimistic
+        setUnreadCount(0);
+        // We'd need a bulk update or just loop. For now, we assume user opening calls individual or bulk.
+        // Let's mark all loaded specific ids as read logic if we had a button, but mostly we mark on click or open?
+        // For simplicity: "Mark all as read" button will loop.
+        notifications.forEach(n => {
+            if (!n.read) db.markNotificationRead(n.id);
+        });
+        setNotifications(prev => prev.map(n => ({ ...n, read: true })));
     };
 
     const emergencyContacts = [
@@ -162,7 +227,7 @@ export function Header({ mode, onMenuToggle }: Omit<HeaderProps, 'onModeChange'>
                                     <Shield className="h-6 w-6" /> Emergency Contacts
                                 </DialogTitle>
                             </DialogHeader>
-                            <div className="grid gap-4 py-4">
+                            <div className="grid gap-4 py-4 max-h-[70vh] overflow-y-auto px-1">
                                 {emergencyContacts.map((contact) => (
                                     <a
                                         key={contact.name}
@@ -193,24 +258,26 @@ export function Header({ mode, onMenuToggle }: Omit<HeaderProps, 'onModeChange'>
                         <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon" className="relative rounded-full hover:bg-muted/50 h-10 w-10">
                                 <Bell className={cn("h-5 w-5 transition-colors", isEmergency ? "text-slate-300" : "text-foreground")} />
-                                <span className="absolute top-2.5 right-2.5 h-2.5 w-2.5 rounded-full bg-red-500 border-2 border-background animate-bounce" />
+                                {unreadCount > 0 && (
+                                    <span className="absolute top-2.5 right-2.5 h-2.5 w-2.5 rounded-full bg-red-500 border-2 border-background animate-bounce" />
+                                )}
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-80 p-0 overflow-hidden border-border/50 shadow-xl backdrop-blur-xl bg-background/95">
                             <div className="bg-muted/50 p-3 border-b flex items-center justify-between">
                                 <span className="font-semibold text-sm">Notifications</span>
-                                <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">3 New</span>
+                                {unreadCount > 0 && <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">{unreadCount} New</span>}
                             </div>
                             <div className="max-h-[300px] overflow-y-auto">
-                                {notifications.map((n) => (
-                                    <DropdownMenuItem key={n.id} className="flex flex-col items-start gap-1 p-4 cursor-pointer hover:bg-muted/50 focus:bg-muted/50 border-b last:border-0 border-border/40">
+                                {notifications.length > 0 ? notifications.map((n) => (
+                                    <DropdownMenuItem key={n.id} className={cn("flex flex-col items-start gap-1 p-4 cursor-pointer hover:bg-muted/50 focus:bg-muted/50 border-b last:border-0 border-border/40", !n.read && "bg-blue-50/50 dark:bg-blue-900/10")}>
                                         <div className="flex items-start gap-3 w-full">
                                             <div className={cn("mt-1 p-2 rounded-full bg-opacity-10 shrink-0", n.color.replace('text-', 'bg-'))}>
                                                 <n.icon className={cn("h-4 w-4", n.color)} />
                                             </div>
                                             <div className="flex-1 space-y-1">
                                                 <div className="flex items-center justify-between">
-                                                    <span className="font-medium text-sm">{n.title}</span>
+                                                    <span className={cn("font-medium text-sm", !n.read ? "text-foreground" : "text-muted-foreground")}>{n.title}</span>
                                                     <span className="text-[10px] text-muted-foreground">{n.time}</span>
                                                 </div>
                                                 <p className="text-xs text-muted-foreground leading-relaxed">
@@ -219,10 +286,14 @@ export function Header({ mode, onMenuToggle }: Omit<HeaderProps, 'onModeChange'>
                                             </div>
                                         </div>
                                     </DropdownMenuItem>
-                                ))}
+                                )) : (
+                                    <div className="p-8 text-center text-sm text-slate-500">
+                                        No notifications
+                                    </div>
+                                )}
                             </div>
                             <div className="p-2 bg-muted/30 border-t text-center">
-                                <Button variant="ghost" size="sm" className="w-full text-xs h-8">
+                                <Button variant="ghost" size="sm" className="w-full text-xs h-8" onClick={markAsRead} disabled={unreadCount === 0}>
                                     Mark all as read
                                 </Button>
                             </div>
@@ -234,8 +305,8 @@ export function Header({ mode, onMenuToggle }: Omit<HeaderProps, 'onModeChange'>
                         <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon" className="rounded-full h-10 w-10 p-0 border border-border/50 bg-background shadow-sm hover:shadow-md transition-all ml-1">
                                 <Avatar className="h-full w-full ring-2 ring-offset-2 ring-offset-background ring-transparent group-hover:ring-primary/20 transition-all">
-                                    <AvatarImage src="https://github.com/shadcn.png" alt="@shadcn" />
-                                    <AvatarFallback className="bg-primary/5 text-primary">US</AvatarFallback>
+                                    <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${profile?.name || 'User'}`} />
+                                    <AvatarFallback>{profile?.name?.[0] || 'U'}</AvatarFallback>
                                 </Avatar>
                             </Button>
                         </DropdownMenuTrigger>
@@ -244,40 +315,43 @@ export function Header({ mode, onMenuToggle }: Omit<HeaderProps, 'onModeChange'>
                             <div className="bg-gradient-to-br from-primary/5 to-primary/10 rounded-lg p-4 mb-2 border border-primary/10">
                                 <div className="flex items-center gap-3 mb-3">
                                     <Avatar className="h-10 w-10 border-2 border-background shadow-sm">
-                                        <AvatarImage src="https://github.com/shadcn.png" />
-                                        <AvatarFallback>US</AvatarFallback>
+                                        <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${profile?.name || 'User'}`} />
+                                        <AvatarFallback>{profile?.name?.[0] || 'U'}</AvatarFallback>
                                     </Avatar>
                                     <div>
-                                        <p className="font-bold text-sm">Lakshya</p>
-                                        <p className="text-xs text-muted-foreground capitalize">{userStats.role}</p>
+                                        <p className="font-bold text-sm">{profile?.name || 'Citizen'}</p>
+                                        <p className="text-xs text-muted-foreground capitalize">{profile?.role || 'Guest'} • {profile?.city || 'Indore'}</p>
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-3 gap-2 text-center">
                                     <div className="bg-background/50 rounded p-1.5 shadow-sm">
                                         <p className="text-[10px] text-muted-foreground font-medium uppercase">Reports</p>
-                                        <p className="font-bold text-sm text-primary">{userStats.complaints}</p>
+                                        <p className="font-bold text-sm text-primary">{profile?.reports_count || 0}</p>
                                     </div>
                                     <div className="bg-background/50 rounded p-1.5 shadow-sm">
                                         <p className="text-[10px] text-muted-foreground font-medium uppercase">Solved</p>
-                                        <p className="font-bold text-sm text-green-600">{userStats.resolved}</p>
+                                        <p className="font-bold text-sm text-green-600">{profile?.resolved_count || 0}</p>
                                     </div>
                                     <div className="bg-background/50 rounded p-1.5 shadow-sm">
                                         <p className="text-[10px] text-muted-foreground font-medium uppercase">Points</p>
-                                        <p className="font-bold text-sm text-amber-600">{userStats.points}</p>
+                                        <p className="font-bold text-sm text-amber-600">{profile?.points || 0}</p>
                                     </div>
                                 </div>
                             </div>
 
-                            <DropdownMenuItem className="cursor-pointer rounded-md focus:bg-primary/5 mb-1">
-                                <User className="mr-2 h-4 w-4 text-primary" />
-                                <span>Full Profile</span>
-                            </DropdownMenuItem>
+                            <Link to="/profile">
+                                <DropdownMenuItem className="cursor-pointer rounded-md focus:bg-primary/5 mb-1">
+                                    <User className="mr-2 h-4 w-4 text-primary" />
+                                    <span>Full Profile</span>
+                                </DropdownMenuItem>
+                            </Link>
+
                             <DropdownMenuItem className="cursor-pointer rounded-md focus:bg-primary/5 mb-1">
                                 <Settings className="mr-2 h-4 w-4 text-primary" />
-                                <span>Settings</span>
+                                <span className="w-full">Settings</span>
                             </DropdownMenuItem>
                             <DropdownMenuSeparator className="my-1 bg-border/50" />
-                            <DropdownMenuItem className="text-red-600 focus:text-red-700 focus:bg-red-50 dark:focus:bg-red-950/20 cursor-pointer rounded-md">
+                            <DropdownMenuItem onClick={() => signOut()} className="text-red-600 focus:text-red-700 focus:bg-red-50 dark:focus:bg-red-950/20 cursor-pointer rounded-md">
                                 <LogOut className="mr-2 h-4 w-4" />
                                 <span>Log out</span>
                             </DropdownMenuItem>

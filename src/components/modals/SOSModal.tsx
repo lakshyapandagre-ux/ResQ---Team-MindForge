@@ -17,8 +17,23 @@ export function SOSModal({ open, onOpenChange }: SOSModalProps) {
             <DialogContent className="max-w-sm rounded-3xl p-6">
                 <DialogHeader className="text-center">
                     <DialogTitle className="text-2xl font-bold text-red-600">EMERGENCY SOS</DialogTitle>
-                    <p className="text-sm text-slate-500">Tap to call immediately</p>
+                    <p className="text-sm text-slate-500">Tap to call or activate tracking</p>
                 </DialogHeader>
+
+                <div className="mb-6">
+                    <Button
+                        className="w-full bg-red-600 hover:bg-red-700 text-white animate-pulse"
+                        onClick={() => {
+                            const event = new CustomEvent('resq-sos-toggle', { detail: { active: true } });
+                            window.dispatchEvent(event);
+                            onOpenChange(false);
+                            // Maybe show a toast
+                        }}
+                    >
+                        <div className="h-3 w-3 rounded-full bg-white mr-2 animate-ping" />
+                        ACTIVATE LIVE TRACKING
+                    </Button>
+                </div>
 
                 <div className="grid grid-cols-2 gap-4 mt-4">
                     <Button

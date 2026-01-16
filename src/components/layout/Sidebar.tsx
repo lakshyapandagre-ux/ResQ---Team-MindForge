@@ -12,6 +12,7 @@ import {
     Home,
     Megaphone,
     Settings,
+    Gift,
     X,
     LogOut
 } from 'lucide-react';
@@ -28,8 +29,12 @@ interface SidebarProps {
     onClose: () => void;
 }
 
+import { useAuth } from "@/contexts/AuthContext";
+
 export function Sidebar({ mode, isOpen, activeItem, onItemClick, onClose }: SidebarProps) {
     const isEmergency = mode === 'emergency';
+    const { profile, signOut } = useAuth();
+    // Fetch removed - relying on context
 
     const communityItems = [
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -37,6 +42,7 @@ export function Sidebar({ mode, isOpen, activeItem, onItemClick, onClose }: Side
         { id: 'missing', label: 'Missing Registry', icon: UserSearch },
         { id: 'events', label: 'Events', icon: Calendar },
         { id: 'preparedness', label: 'Preparedness', icon: ShieldCheck },
+        { id: 'rewards', label: 'Rewards', icon: Gift },
         { id: 'helpline', label: 'Helpline', icon: Phone },
     ];
 
@@ -85,14 +91,14 @@ export function Sidebar({ mode, isOpen, activeItem, onItemClick, onClose }: Side
                         <div className="relative z-10 flex items-center gap-4 mb-6">
                             <div className="relative">
                                 <Avatar className="h-12 w-12 border-2 border-white shadow-md ring-2 ring-teal-50">
-                                    <AvatarImage src="https://github.com/shadcn.png" />
-                                    <AvatarFallback>AL</AvatarFallback>
+                                    <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${profile?.name || 'User'}`} />
+                                    <AvatarFallback>{profile?.name?.[0] || 'U'}</AvatarFallback>
                                 </Avatar>
                                 <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-green-500 ring-2 ring-white"></span>
                             </div>
                             <div>
-                                <h3 className="font-bold text-slate-900 dark:text-slate-100">Alex Johnson</h3>
-                                <p className="text-xs font-medium text-teal-600 dark:text-teal-400">Ward #45 Citizen</p>
+                                <h3 className="font-bold text-slate-900 dark:text-slate-100">{profile?.name || 'Citizen'}</h3>
+                                <p className="text-xs font-medium text-teal-600 dark:text-teal-400 capitalize">{profile?.role || 'Guest'} • {profile?.city || 'Indore'}</p>
                             </div>
                         </div>
 
@@ -148,7 +154,12 @@ export function Sidebar({ mode, isOpen, activeItem, onItemClick, onClose }: Side
                                 <div className="relative z-10">
                                     <p className="text-xs font-medium text-indigo-100 mb-1">Upcoming Event</p>
                                     <h4 className="text-sm font-bold mb-3">City Clean-up Drive</h4>
-                                    <Button size="sm" variant="secondary" className="w-full h-8 text-xs font-semibold bg-white text-indigo-600 hover:bg-indigo-50 border-none shadow-none">
+                                    <Button
+                                        size="sm"
+                                        variant="secondary"
+                                        className="w-full h-8 text-xs font-semibold bg-white text-indigo-600 hover:bg-indigo-50 border-none shadow-none"
+                                        onClick={() => onItemClick('events')}
+                                    >
                                         Register Now
                                     </Button>
                                 </div>
@@ -159,11 +170,17 @@ export function Sidebar({ mode, isOpen, activeItem, onItemClick, onClose }: Side
                     {/* Bottom Items */}
                     <div className="p-4 mt-auto border-t border-border/50 bg-white/50 backdrop-blur-sm dark:bg-slate-900/50">
                         <div className="space-y-1">
-                            <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-colors">
+                            <button
+                                onClick={() => onItemClick('settings')}
+                                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-colors"
+                            >
                                 <Settings className="h-5 w-5 text-slate-400" />
                                 Settings
                             </button>
-                            <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-500 hover:bg-red-50 hover:text-red-600 transition-colors">
+                            <button
+                                onClick={() => signOut()}
+                                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-500 hover:bg-red-50 hover:text-red-600 transition-colors"
+                            >
                                 <LogOut className="h-5 w-5 text-slate-400" />
                                 Sign Out
                             </button>

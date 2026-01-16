@@ -3,17 +3,19 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import {
-    MapPin, X,
+    X,
     Loader2, Upload, ChevronRight, CheckCircle2, AlertCircle
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { LocationPicker } from "./LocationPicker";
+import { supabase } from "@/lib/supabase";
+import { db } from "@/lib/db";
 
 const complaintSchema = z.object({
     title: z.string().min(5, "Title too short"),
@@ -22,15 +24,15 @@ const complaintSchema = z.object({
     description: z.string().min(10, "Describe in detail"),
 });
 
-// Mock Categories & Locations
-const CATEGORIES = ["Garbage", "Road", "Drainage", "Electricity", "Water", "Traffic", "Other"];
-const LOCATIONS = ["Vijay Nagar", "Palasia", "Bhawarkua", "Rajwada", "Annapurna", "LIG Colony", "Rau"];
+// Categories
+const CATEGORIES = ["Garbage", "Roads", "Drainage", "Electricity", "Water", "Traffic", "Other"];
 
 export function ReportForm({ onSuccess }: { onSuccess?: () => void }) {
     const [step, setStep] = useState(1);
-    const [images, setImages] = useState<string[]>([]);
-    const [uploading, setUploading] = useState(false);
+    const [images, setImages] = useState<File[]>([]);
+    const [imageUrls, setImageUrls] = useState<string[]>([]); // For preview
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const form = useForm<z.infer<typeof complaintSchema>>({
@@ -45,13 +47,11 @@ export function ReportForm({ onSuccess }: { onSuccess?: () => void }) {
 
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
-            setUploading(true);
-            // Simulate upload
-            setTimeout(() => {
-                const url = URL.createObjectURL(e.target.files![0]);
-                setImages(prev => [...prev, url]);
-                setUploading(false);
-            }, 1000);
+            const file = e.target.files[0];
+            // Preview
+            const url = URL.createObjectURL(file);
+            setImageUrls(prev => [...prev, url]);
+            setImages(prev => [...prev, file]);
         }
     };
 
@@ -59,35 +59,111 @@ export function ReportForm({ onSuccess }: { onSuccess?: () => void }) {
         e.preventDefault();
         e.stopPropagation();
         if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-            setUploading(true);
-            setTimeout(() => {
-                const url = URL.createObjectURL(e.dataTransfer.files[0]);
-                setImages(prev => [...prev, url]);
-                setUploading(false);
-            }, 1000);
+            const file = e.dataTransfer.files[0];
+            // Preview
+            const url = URL.createObjectURL(file);
+            setImageUrls(prev => [...prev, url]);
+            setImages(prev => [...prev, file]);
         }
     };
 
     const removeImage = (index: number) => {
-        setImages(images.filter((_, i) => i !== index));
+        setImages(prev => prev.filter((_, i) => i !== index));
+        setImageUrls(prev => prev.filter((_, i) => i !== index));
+    };
+
+    const uploadImagesToStorage = async () => {
+        const uploadedUrls: string[] = [];
+        for (const file of images) {
+            try {
+                const publicUrl = await db.uploadImage(file);
+                if (publicUrl) uploadedUrls.push(publicUrl);
+            } catch (error) {
+                console.error("Upload error:", error);
+            }
+        }
+        return uploadedUrls;
     };
 
     const onSubmit = async (data: z.infer<typeof complaintSchema>) => {
-        setIsSubmitting(true);
-        console.log("Submitting Complaint:", data);
-        // Simulate API
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        try {
+            setIsSubmitting(true);
+            console.log('[ReportForm] Starting submission...');
 
-        toast.success("Complaint Submitted Successfully", {
-            description: "Ref: #" + Math.random().toString(36).substr(2, 6).toUpperCase(),
-            icon: <CheckCircle2 className="text-green-500" />
-        });
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) {
+                toast.error("You must be logged in to submit a report");
+                setIsSubmitting(false);
+                return;
+            }
+            console.log('[ReportForm] User authenticated:', user.id);
 
-        setIsSubmitting(false);
-        setStep(1);
-        form.reset();
-        setImages([]);
-        onSuccess?.();
+            // Upload images (with fallback)
+            let publicImageUrls: string[] = [];
+            if (images.length > 0) {
+                try {
+                    console.log('[ReportForm] Uploading', images.length, 'images...');
+                    publicImageUrls = await uploadImagesToStorage();
+                    console.log('[ReportForm] Images uploaded:', publicImageUrls);
+                } catch (uploadError) {
+                    console.error('[ReportForm] Image upload failed:', uploadError);
+                    toast.error("Image upload failed, submitting without images");
+                    // Continue without images rather than blocking submission
+                }
+            }
+
+            // Ensure profile exists to prevent foreign key errors
+            console.log('[ReportForm] Checking profile...');
+            await db.getOrCreateProfile(user);
+
+            // Create complaint
+            console.log('[ReportForm] Creating complaint...');
+            const newComplaint = await db.createComplaint({
+                user_id: user.id,
+                title: data.title,
+                description: data.description,
+                category: data.category,
+                location: data.location,
+                lat: coords?.lat,
+                lng: coords?.lng,
+                images: publicImageUrls
+            });
+            console.log('[ReportForm] Complaint created:', newComplaint);
+
+            toast.success("Complaint Submitted Successfully", {
+                icon: <CheckCircle2 className="text-green-500" />
+            });
+
+            setIsSubmitting(false);
+            setStep(1);
+            form.reset();
+            setImages([]);
+            setImageUrls([]);
+            setCoords(null);
+            onSuccess?.();
+
+        } catch (error: any) {
+            console.error('[ReportForm] Submission failed:', error);
+            console.error('[ReportForm] Error details:', {
+                message: error.message,
+                code: error.code,
+                details: error.details,
+                hint: error.hint
+            });
+
+            // User-friendly error messages
+            let errorMessage = "Failed to submit complaint";
+            if (error.message?.includes('bucket')) {
+                errorMessage = "Storage configuration error. Please contact support.";
+            } else if (error.message?.includes('permission')) {
+                errorMessage = "Permission denied. Please try logging in again.";
+            } else if (error.message) {
+                errorMessage = error.message;
+            }
+
+            toast.error(errorMessage);
+            setIsSubmitting(false);
+        }
     };
 
     const nextStep = async () => {
@@ -115,21 +191,14 @@ export function ReportForm({ onSuccess }: { onSuccess?: () => void }) {
                 <form>
                     {step === 1 && (
                         <div className="space-y-4 animate-in slide-in-from-right-4 fade-in duration-300">
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium">Where is the issue?</label>
-                                <Select onValueChange={(val) => form.setValue("location", val)} defaultValue={form.getValues("location")}>
-                                    <SelectTrigger className="bg-slate-50/50">
-                                        <div className="flex items-center gap-2 text-muted-foreground">
-                                            <MapPin className="h-4 w-4" />
-                                            <SelectValue placeholder="Select Location" />
-                                        </div>
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {LOCATIONS.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
-                                    </SelectContent>
-                                </Select>
-                                {form.formState.errors.location && <p className="text-xs text-red-500">{form.formState.errors.location.message}</p>}
-                            </div>
+                            <LocationPicker
+                                onLocationSelect={(loc) => {
+                                    form.setValue("location", loc.address);
+                                    setCoords({ lat: loc.lat, lng: loc.lng });
+                                }}
+                                defaultValue={form.getValues("location")}
+                            />
+                            {form.formState.errors.location && <p className="text-xs text-red-500">{form.formState.errors.location.message}</p>}
 
                             <div className="space-y-2">
                                 <label className="text-sm font-medium">Issue Category</label>
@@ -193,19 +262,20 @@ export function ReportForm({ onSuccess }: { onSuccess?: () => void }) {
                                     onChange={handleImageUpload}
                                 />
                                 <div className="h-10 w-10 bg-indigo-50 rounded-full flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                                    {uploading ? <Loader2 className="h-5 w-5 text-indigo-600 animate-spin" /> : <Upload className="h-5 w-5 text-indigo-600" />}
+                                    <Upload className="h-5 w-5 text-indigo-600" />
                                 </div>
                                 <p className="text-sm font-medium text-slate-700">Click to upload or drag & drop</p>
-                                <p className="text-xs text-slate-400 mt-1">SVG, PNG, JPG or GIF (max. 800x400px)</p>
+                                <p className="text-xs text-slate-400 mt-1">SVG, PNG, JPG or GIF</p>
                             </div>
 
                             {/* Image Preview Grid */}
-                            {images.length > 0 && (
+                            {imageUrls.length > 0 && (
                                 <div className="grid grid-cols-3 gap-2">
-                                    {images.map((img, idx) => (
+                                    {imageUrls.map((img, idx) => (
                                         <div key={idx} className="relative aspect-square rounded-lg overflow-hidden border group">
                                             <img src={img} alt="preview" className="w-full h-full object-cover" />
                                             <button
+                                                type="button"
                                                 onClick={() => removeImage(idx)}
                                                 className="absolute top-1 right-1 bg-black/50 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
                                             >
@@ -231,7 +301,23 @@ export function ReportForm({ onSuccess }: { onSuccess?: () => void }) {
                         Next Step <ChevronRight className="ml-2 h-4 w-4" />
                     </Button>
                 ) : (
-                    <Button onClick={form.handleSubmit(onSubmit)} disabled={isSubmitting} className="bg-green-600 hover:bg-green-700 text-white">
+                    <Button
+                        onClick={async () => {
+                            console.log('[ReportForm] Submit button clicked');
+                            // Manually validate all fields
+                            const isValid = await form.trigger();
+                            console.log('[ReportForm] Form validation:', isValid);
+                            if (isValid) {
+                                const formData = form.getValues();
+                                await onSubmit(formData);
+                            } else {
+                                console.log('[ReportForm] Validation errors:', form.formState.errors);
+                                toast.error("Please fill all required fields");
+                            }
+                        }}
+                        disabled={isSubmitting}
+                        className="bg-green-600 hover:bg-green-700 text-white"
+                    >
                         {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
                         Submit Complaint
                     </Button>

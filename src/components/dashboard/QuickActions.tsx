@@ -24,7 +24,7 @@ function QuickActionItem({
     return (
         <button
             onClick={onClick}
-            className="group flex h-full w-full flex-col items-start rounded-[2rem] bg-white p-5 text-left shadow-sm transition-all hover:translate-y-[-2px] hover:shadow-md dark:bg-slate-900 border border-slate-100 dark:border-slate-800 relative overflow-hidden"
+            className="group flex h-full w-full flex-col items-start rounded-[2rem] bg-white p-4 md:p-5 text-left shadow-sm transition-all hover:translate-y-[-2px] hover:shadow-md dark:bg-slate-900 border border-slate-100 dark:border-slate-800 relative overflow-hidden"
         >
             <div className={cn("mb-4 flex h-12 w-12 items-center justify-center rounded-full transition-colors relative z-10", bg)}>
                 <Icon className={cn("h-6 w-6 transition-transform group-hover:scale-110", color)} />

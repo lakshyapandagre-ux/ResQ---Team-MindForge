@@ -4,9 +4,10 @@ import type { AppMode } from '@/types';
 interface BottomNavProps {
     mode: AppMode;
     onModeChange: (mode: AppMode) => void;
+    onProfileClick?: () => void;
 }
 
-export function BottomNav({ mode, onModeChange }: BottomNavProps) {
+export function BottomNav({ mode, onModeChange, onProfileClick }: BottomNavProps) {
     const isEmergency = mode === 'emergency';
 
     return (
@@ -26,7 +27,10 @@ export function BottomNav({ mode, onModeChange }: BottomNavProps) {
                     <AlertTriangle className="h-6 w-6" />
                     <span className="text-[10px] font-medium">Emergency</span>
                 </button>
-                <button className="flex flex-col items-center gap-1 p-2 text-muted-foreground hover:text-primary">
+                <button
+                    onClick={onProfileClick}
+                    className="flex flex-col items-center gap-1 p-2 text-muted-foreground hover:text-primary"
+                >
                     <User className="h-6 w-6" />
                     <span className="text-[10px] font-medium">Profile</span>
                 </button>

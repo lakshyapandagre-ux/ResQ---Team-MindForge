@@ -11,9 +11,23 @@ import { FacilitiesPage } from "@/pages/Facilities";
 import { CityAlertsPage } from "@/pages/CityAlerts";
 import { JoinSquadPage } from "@/pages/JoinSquad";
 
+import { WasteServicePage } from "@/services/WasteServicePage";
+import { ParkingServicePage } from "@/services/ParkingServicePage";
+import { PowerServicePage } from "@/services/PowerServicePage";
+import { WifiServicePage } from "@/services/WifiServicePage";
+
 const queryClient = new QueryClient();
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+
+import { AuthProvider } from "@/contexts/AuthContext";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { Signup } from "@/pages/Signup";
+import { AppBootstrap } from "@/components/AppBootstrap";
+
+import { OnboardingContainer } from "@/onboarding/OnboardingContainer";
+import { LoginGuard } from "@/onboarding/LoginGuard";
+import { Unauthorized } from "@/pages/Unauthorized";
 
 const App = () => (
   <ErrorBoundary>
@@ -21,18 +35,46 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/complaints" element={<Index />} />
-            <Route path="/profile" element={<ProfilePage />} />
-            <Route path="/services" element={<ServicesPage />} />
-            <Route path="/facilities" element={<FacilitiesPage />} />
-            <Route path="/city-alerts" element={<CityAlertsPage />} />
-            <Route path="/join-squad" element={<JoinSquadPage />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
+        <AuthProvider>
+          <AppBootstrap>
+            <BrowserRouter>
+              <Routes>
+                {/* Onboarding */}
+                <Route path="/onboarding" element={<OnboardingContainer />} />
+
+                {/* Public Routes */}
+                <Route path="/login" element={<LoginGuard />} />
+                <Route path="/signup" element={<Signup />} />
+                <Route path="/unauthorized" element={<Unauthorized />} />
+
+                {/* Protected Routes */}
+                <Route element={<ProtectedRoute />}>
+                  <Route path="/" element={<Index />} />
+                  <Route path="/complaints" element={<Index />} />
+                  <Route path="/profile" element={<Index />} />
+                  <Route path="/services" element={<ServicesPage />} />
+                  <Route path="/services/waste" element={<WasteServicePage />} />
+                  <Route path="/services/parking" element={<ParkingServicePage />} />
+                  <Route path="/services/electricity" element={<PowerServicePage />} />
+                  <Route path="/services/water" element={<ServicesPage />} />
+                  <Route path="/services/wifi" element={<WifiServicePage />} />
+                  <Route path="/facilities" element={<FacilitiesPage />} />
+                  <Route path="/city-alerts" element={<CityAlertsPage />} />
+                  <Route path="/join-squad" element={<JoinSquadPage />} />
+                  <Route path="/events" element={<Index />} />
+                  <Route path="/preparedness" element={<Index />} />
+                  <Route path="/rewards" element={<Index />} />
+                  <Route path="/settings" element={<Index />} />
+                  <Route path="/missing" element={<Index />} />
+                  <Route path="/helpline" element={<Index />} />
+                </Route>
+
+                {/* 404 */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </BrowserRouter>
+          </AppBootstrap>
+        </AuthProvider>
       </TooltipProvider>
     </QueryClientProvider>
   </ErrorBoundary>
