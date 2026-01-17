@@ -14,7 +14,7 @@ import { StatCounter } from "./StatCounter";
 import { AchievementBadge } from "./AchievementBadge";
 import { Card } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
-import type { Profile } from "@/lib/db";
+import type { Profile } from "@/contexts/AuthContext";
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 

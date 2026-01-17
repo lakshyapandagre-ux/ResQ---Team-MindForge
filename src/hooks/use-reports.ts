@@ -83,7 +83,8 @@ export function useCreateReport() {
                 category: report.category!,
                 description: report.description!,
                 location: report.locationAddress!,
-                user_id: user.id
+                user_id: user.id,
+                images: []
             });
         },
         onSuccess: () => {

@@ -3,25 +3,18 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import {
-    MapPin, Camera,
-    ThumbsUp, MessageCircle, Repeat, Clock,
-    Loader2, Upload, X
+    Camera, Loader2, Upload, X
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
 import { db } from "@/lib/db";
 import { useAuth } from "@/contexts/AuthContext";
 
 // --- Types ---
-type ComplaintStatus = "Pending" | "Verified" | "Assigned" | "Resolved";
-type ComplaintCategory = "Garbage" | "Road" | "Drainage" | "Electricity" | "Water" | "Other";
 
 // --- Form Schema ---
 const complaintSchema = z.object({

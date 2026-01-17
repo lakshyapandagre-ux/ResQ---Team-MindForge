@@ -21,7 +21,7 @@ import { ArrowLeft, MapPin, Award, Edit2, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
-export function ProfilePage() {
+export default function ProfilePage() {
     const { profile, refreshProfile, loading } = useAuth();
     const [isEditing, setIsEditing] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
@@ -154,7 +154,7 @@ export function ProfilePage() {
                     {/* Stats Cards */}
                     <Card className="hover:shadow-md transition-shadow">
                         <CardContent className="pt-6 text-center">
-                            <div className="text-3xl font-bold text-indigo-600 mb-1">{profile.reports_filed}</div>
+                            <div className="text-3xl font-bold text-indigo-600 mb-1">{profile.reports_count}</div>
                             <p className="text-sm font-medium text-slate-600">Reports Submitted</p>
                         </CardContent>
                     </Card>

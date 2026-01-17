@@ -72,7 +72,7 @@ export function ActivityFeed({ userId }: { userId: string }) {
                 <CardTitle className="text-lg">Recent Activity</CardTitle>
             </CardHeader>
             <CardContent className="space-y-0">
-                {activities.map((activity, index) => (
+                {activities.map((activity) => (
                     <div key={activity.id} className="relative pl-6 pb-6 last:pb-0 border-l border-slate-200 dark:border-slate-700 ml-2">
                         {/* Timeline dot */}
                         <div className="absolute top-0 -left-1.5 h-3 w-3 rounded-full bg-slate-200 dark:bg-slate-700 ring-4 ring-white dark:ring-slate-950" />

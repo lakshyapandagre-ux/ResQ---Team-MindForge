@@ -12,7 +12,7 @@ import { MissingRegistry } from "@/components/dashboard/MissingRegistry";
 import { Events } from "@/pages/Events";
 import Preparedness from "@/pages/Preparedness";
 import Settings from "@/pages/Settings";
-import { ProfilePage } from "@/pages/Profile";
+import ProfilePage from "@/pages/Profile";
 import type { AppMode } from "@/types";
 
 import { LiveLocationStreamer } from "@/components/sos/LiveLocationStreamer";

@@ -1,10 +1,10 @@
 
 import { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import type { Reward, Redemption } from './data';
-import { Coins, Loader2, CheckCircle2, Ticket } from 'lucide-react';
+import type { Reward } from './data';
+import { Coins, Loader2, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface RedeemModalProps {

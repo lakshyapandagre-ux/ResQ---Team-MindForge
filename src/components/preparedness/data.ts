@@ -1,7 +1,5 @@
-
 import {
-    HeartPulse, Flame, Waves, Activity, Zap,
-    Stethoscope, ShieldAlert, PhoneCall, Hand, ShieldCheck
+    HeartPulse, Flame, Waves, Activity, Zap
 } from "lucide-react";
 
 export interface Step {

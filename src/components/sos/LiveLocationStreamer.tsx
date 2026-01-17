@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useWatchLocation } from "@/services/locationService";
 import { supabase } from "@/lib/supabase";
-import { toast } from "sonner";
+
 import { Radio } from "lucide-react";
 
 interface LiveLocationStreamerProps {

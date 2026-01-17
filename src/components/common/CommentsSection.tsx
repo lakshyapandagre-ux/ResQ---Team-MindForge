@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Send, User, Loader2, MessageSquare } from 'lucide-react';
+import { Send, Loader2, MessageSquare } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -22,7 +22,7 @@ interface CommentsSectionProps {
 }
 
 export function CommentsSection({ parentId, parentType }: CommentsSectionProps) {
-    const { user, profile } = useAuth();
+    const { user } = useAuth();
     const [comments, setComments] = useState<Comment[]>([]);
     const [newMessage, setNewMessage] = useState("");
     const [loading, setLoading] = useState(true);

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { Shield, Smartphone, Loader2 } from "lucide-react";
+import { Shield } from "lucide-react";
 import { motion } from "framer-motion";
 
 interface AppBootstrapProps {

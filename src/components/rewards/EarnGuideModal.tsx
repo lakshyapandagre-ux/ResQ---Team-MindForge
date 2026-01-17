@@ -2,9 +2,6 @@
 import {
     Dialog,
     DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -12,9 +9,7 @@ import {
     Camera,
     CheckCircle2,
     Share2,
-    AlertTriangle,
     Trophy,
-    ArrowRight,
     Gift,
     QrCode,
     ShieldCheck,
@@ -167,7 +162,7 @@ function ActionCard({ icon: Icon, color, title, points, desc }: any) {
     );
 }
 
-function StepItem({ number, title, desc, icon: Icon, isLast }: any) {
+function StepItem({ number, title, desc, icon: Icon }: any) {
     return (
         <div className="relative pl-12">
             <div className="absolute left-0 top-0 w-10 h-10 rounded-full bg-white border-2 border-indigo-100 flex items-center justify-center z-10 shadow-sm">

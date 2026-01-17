@@ -13,7 +13,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+// import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 // import { CityMap } from "@/components/maps/MapComponents"; // Removed - causing issues
 import { cn } from "@/lib/utils";
 import type { Complaint } from "./types";
@@ -243,7 +243,7 @@ export function PostCard({ complaint }: PostCardProps) {
                     <div className="flex justify-between text-xs font-semibold text-slate-700 mb-2">
                         <span className="flex items-center gap-1.5">
                             <div className={cn("h-2 w-2 rounded-full animate-pulse",
-                                complaint.status === 'Resolved' ? "bg-emerald-500" : "bg-blue-500"
+                                (complaint.status as string) === 'Resolved' ? "bg-emerald-500" : "bg-blue-500"
                             )} />
                             {complaint.status}
                         </span>

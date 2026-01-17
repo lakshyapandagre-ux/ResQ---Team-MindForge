@@ -1,9 +1,7 @@
 import { useRef, useEffect, useState } from "react";
-import { Megaphone, X, Bell } from "lucide-react";
+import { Megaphone } from "lucide-react";
 import gsap from "gsap";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { db } from "@/lib/db";
 import { formatDistanceToNow } from "date-fns";
 

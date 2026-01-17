@@ -1,12 +1,27 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
-type Role = "citizen" | "volunteer" | "admin";
+// Use the Profile type from db.ts or define a compatible one here.
+// To avoid circular dependencies if we imported from db, we redefine it slightly or import if possible.
+// For now, let's make it fully compatible with db.ts Profile.
 
-interface Profile {
+export interface Profile {
   id: string;
+  name: string;
   email: string;
-  role: Role;
+  phone?: string;
+  role: "citizen" | "volunteer" | "admin";
+  city: string;
+  status: string;
+  points: number;
+  reports_count: number;
+  resolved_count: number;
+  area_id?: string;
+  language?: string;
+  notification_preferences?: any;
+  created_at: string;
+  updated_at: string;
+  last_login_at?: string;
 }
 
 interface AuthContextType {
@@ -14,6 +29,7 @@ interface AuthContextType {
   profile: Profile | null;
   loading: boolean;
   signOut: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -21,6 +37,7 @@ const AuthContext = createContext<AuthContextType>({
   profile: null,
   loading: true,
   signOut: async () => { },
+  refreshProfile: async () => { },
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -91,20 +108,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             email: user.email,
             name: user.email?.split('@')[0] || 'User', // Fallback name
             role: "citizen",
+            city: "Indore",
+            status: "active",
+            points: 0,
+            reports_count: 0,
+            resolved_count: 0
           })
           .select()
           .single();
 
         if (insertError) throw insertError;
 
-        setProfile(newProfile);
+        setProfile(newProfile as Profile);
         console.log("[Auth] Profile created:", newProfile);
       } else {
-        setProfile(data);
+        setProfile(data as Profile);
         console.log("[Auth] Profile loaded:", data);
       }
     } catch (err) {
       console.error("[Auth] Profile load failed:", err);
+    }
+  };
+
+  const refreshProfile = async () => {
+    if (user) {
+      await loadProfile(user);
     }
   };
 
@@ -115,7 +143,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, signOut }}>
+    <AuthContext.Provider value={{ user, profile, loading, signOut, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );

@@ -177,19 +177,6 @@ export function Events() {
                     <h3 className="text-lg font-semibold text-slate-900">Map View Temporarily Unavailable</h3>
                     <p className="text-sm text-muted-foreground mt-2">Please use list view to see all events.</p>
                 </div>
-                {/* <div className="animate-in fade-in zoom-in-95 duration-500 bg-white p-1 rounded-xl border shadow-sm">
-                    <CityMap
-                        markers={filteredEvents.map(e => ({
-                            id: e.id,
-                            lat: e.lat,
-                            lng: e.lng,
-                            title: e.title,
-                            description: e.location,
-                            type: 'event'
-                        }))}
-                        height="600px"
-                    />
-                </div> */}
             )}
 
             {filteredEvents.length === 0 && (

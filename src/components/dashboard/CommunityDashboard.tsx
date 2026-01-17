@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect } from "react";
 import {
     Megaphone,
     TrendingUp,
@@ -12,8 +12,8 @@ import { Button } from "@/components/ui/button";
 import gsap from "gsap";
 import { useNavigate } from "react-router-dom";
 import { QuickActions } from "@/components/dashboard/QuickActions";
-import { db } from "@/lib/db";
-import { supabase } from "@/lib/supabase";
+// import { db } from "@/lib/db";
+// import { supabase } from "@/lib/supabase";
 
 import { CityStatusBar } from "./CityStatusBar";
 import { ImpactPanel } from "./ImpactPanel";

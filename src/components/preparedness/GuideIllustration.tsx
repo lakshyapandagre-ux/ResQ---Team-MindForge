@@ -1,7 +1,6 @@
 
 import {
-    HeartPulse, Activity, Zap, Waves, Flame, Siren, User, Hand,
-    Stethoscope, ShieldCheck, Ambulance, AlertOctagon, CheckCircle2
+    HeartPulse, Activity, Zap, Waves, Flame, Stethoscope
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 

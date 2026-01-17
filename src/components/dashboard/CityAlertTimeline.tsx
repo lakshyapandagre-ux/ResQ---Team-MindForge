@@ -1,7 +1,7 @@
 
 import { useState } from "react";
 import {
-    AlertTriangle, Clock, MapPin, Share2, ChevronRight, RefreshCw, Radio, Navigation
+    AlertTriangle, Clock, MapPin, Share2, ChevronRight, RefreshCw, Radio
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
