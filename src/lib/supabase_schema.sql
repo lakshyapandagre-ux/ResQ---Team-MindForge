@@ -1,6 +1,31 @@
-
 -- Enable PostGIS for location features (optional but recommended)
 create extension if not exists postgis;
+
+-- 0. Profiles Table
+create table if not exists profiles (
+  id uuid primary key references auth.users(id) on delete cascade,
+  name text not null,
+  email text not null,
+  phone text,
+  role text default 'citizen' check (role in ('citizen', 'volunteer', 'admin')),
+  status text default 'active' check (status in ('active', 'disabled', 'pending_verification')),
+  area_id uuid,
+  language text default 'en',
+  notification_preferences jsonb default '{"sms": false, "email": true, "push": true}'::jsonb,
+  created_at timestamp with time zone default now(),
+  updated_at timestamp with time zone default now()
+);
+
+alter table profiles enable row level security;
+
+create policy "Users can view own profile" 
+on profiles for select using (auth.uid() = id);
+
+create policy "Users can insert own profile" 
+on profiles for insert with check (auth.uid() = id);
+
+create policy "Users can update own profile" 
+on profiles for update using (auth.uid() = id);
 
 -- 1. Complaints Table
 create table if not exists complaints (
