@@ -123,9 +123,11 @@ export function MissingRegistry() {
 
 
     const onSubmit = async (data: z.infer<typeof reportSchema>) => {
+        console.log("Starting submission...", data);
         setIsSubmitting(true);
         try {
             if (!user) {
+                console.error("No user found");
                 toast.error("You must be logged in to report.");
                 setIsSubmitting(false);
                 return;
@@ -133,16 +135,21 @@ export function MissingRegistry() {
 
             let publicUrl = "";
             if (imageFile) {
+                console.log("Uploading image...");
                 try {
                     const url = await db.uploadImage(imageFile);
+                    console.log("Image uploaded:", url);
                     if (url) publicUrl = url;
                 } catch (uploadError: any) {
                     console.error("Upload failed after retries:", uploadError);
                     toast.error("Failed to upload image, but continuing with text report.");
                 }
+            } else {
+                console.log("No image to upload");
             }
 
-            await db.createMissingReport({
+            console.log("Inserting into database...");
+            const reportData = {
                 user_id: user.id,
                 person_name: data.personName,
                 age: data.age ? parseInt(data.age) : 0,
@@ -154,7 +161,11 @@ export function MissingRegistry() {
                     : "https://images.unsplash.com/photo-1555616635-6409600311bf?q=80&w=300&auto=format&fit=crop"),
                 // @ts-ignore
                 type: activeType
-            } as any);
+            };
+            console.log("Payload:", reportData);
+
+            await db.createMissingReport(reportData as any);
+            console.log("Database insert successful");
 
             form.reset();
             setImageFile(null);
@@ -165,10 +176,11 @@ export function MissingRegistry() {
             fetchReports();
 
         } catch (error: any) {
-            console.error(error);
+            console.error("Submission error:", error);
             toast.error("Failed to submit report: " + (error.message || "Unknown error"));
         } finally {
             setIsSubmitting(false);
+            console.log("Submission process finished");
         }
     };
 

@@ -88,30 +88,31 @@ export interface ComplaintData {
 
 export const db = {
     // Profiles
-    async getOrCreateProfile(user: any) {
+    async getOrCreateProfile(user: any, role: string = 'citizen') {
         // 1. Try to fetch existing profile
         const { data, error } = await supabase
             .from('profiles')
             .select('*')
             .eq('id', user.id)
-            .single();
+            .maybeSingle();
 
-        // 2. If error is NOT "Row not found", throw it
-        if (error && error.code !== 'PGRST116') {
+        if (error) {
             console.error("Profile fetch error:", error);
             throw error;
         }
 
-        // 3. If profile exists, return it
+        // 2. If profile exists, return it
         if (data) return data;
 
-        // 4. If not found, create new profile
+        // 3. If not found, create new profile (using upsert to handle race conditions)
+        console.log("Creating new profile for user:", user.email);
+
         const newProfileData = {
             id: user.id,
             name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Citizen',
             email: user.email,
             phone: user.phone || null,
-            role: 'citizen',
+            role: role, // Use the passed role
             city: user.user_metadata?.city || 'Indore',
             status: 'active',
             points: 0,
@@ -121,7 +122,7 @@ export const db = {
 
         const { data: newProfile, error: insertError } = await supabase
             .from('profiles')
-            .insert([newProfileData])
+            .upsert([newProfileData]) // upsert allows overwriting if it was created milliseconds ago
             .select()
             .single();
 

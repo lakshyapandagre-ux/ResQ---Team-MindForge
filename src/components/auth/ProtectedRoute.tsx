@@ -7,7 +7,7 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
-  const { user, profile, loading } = useAuth();
+  const { user, profile, loading, profileError, refreshProfile } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -20,6 +20,21 @@ export function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
 
   if (!user) {
     return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  if (profileError) {
+    return (
+      <div className="h-screen w-full flex flex-col items-center justify-center p-4 text-center">
+        <h2 className="text-xl font-bold text-slate-800 mb-2">Connection Error</h2>
+        <p className="text-slate-500 mb-6 max-w-sm">{profileError}</p>
+        <button
+          onClick={() => refreshProfile()}
+          className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors"
+        >
+          Retry Connection
+        </button>
+      </div>
+    );
   }
 
   if (!profile) {

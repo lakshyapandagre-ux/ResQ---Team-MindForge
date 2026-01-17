@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { db } from "@/lib/db";
 
 // Use the Profile type from db.ts or define a compatible one here.
 // To avoid circular dependencies if we imported from db, we redefine it slightly or import if possible.
@@ -28,6 +29,9 @@ interface AuthContextType {
   user: any;
   profile: Profile | null;
   loading: boolean;
+  profileError: string | null;
+  signIn: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string, data?: any) => Promise<void>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
@@ -36,6 +40,9 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   profile: null,
   loading: true,
+  profileError: null,
+  signIn: async () => { },
+  signUp: async () => { },
   signOut: async () => { },
   refreshProfile: async () => { },
 });
@@ -44,6 +51,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [profileError, setProfileError] = useState<string | null>(null);
 
   useEffect(() => {
     initAuth();
@@ -58,6 +66,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } else {
           setUser(null);
           setProfile(null);
+          setProfileError(null);
         }
 
         setLoading(false);
@@ -88,59 +97,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const loadProfile = async (user: any) => {
+  const loadProfile = async (user: any, retries = 3): Promise<void> => {
+    setProfileError(null);
     try {
-      console.log("[Auth] Loading profile...");
+      console.log(`[Auth] Loading profile... (Attempts left: ${retries})`);
 
-      // Create a timeout promise that rejects after 10 seconds
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Profile load timed out")), 10000)
-      );
+      // Add a small delay if retrying
+      if (retries < 3) await new Promise(r => setTimeout(r, 1000));
 
-      // Race the DB query against the timeout
-      const { data, error } = await Promise.race([
-        supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", user.id)
-          .maybeSingle(),
-        timeoutPromise
-      ]) as any;
+      const data = await db.getOrCreateProfile(user);
 
-      if (error) {
-        throw error;
-      }
+      setProfile(data as Profile);
+      console.log("[Auth] Profile loaded:", data);
 
-      if (!data) {
-        console.warn("[Auth] Profile missing, creating...");
-
-        const { data: newProfile, error: insertError } = await supabase
-          .from("profiles")
-          .insert({
-            id: user.id,
-            email: user.email,
-            name: user.email?.split('@')[0] || 'User', // Fallback name
-            role: "citizen",
-            city: "Indore",
-            status: "active",
-            points: 0,
-            reports_count: 0,
-            resolved_count: 0
-          })
-          .select()
-          .single();
-
-        if (insertError) throw insertError;
-
-        setProfile(newProfile as Profile);
-        console.log("[Auth] Profile created:", newProfile);
-      } else {
-        setProfile(data as Profile);
-        console.log("[Auth] Profile loaded:", data);
-      }
-    } catch (err) {
+    } catch (err: any) {
       console.error("[Auth] Profile load failed:", err);
-      // Ensure we don't block the app if profile fails
+      // Retry logic
+      if (retries > 0) {
+        return loadProfile(user, retries - 1);
+      }
+      setProfileError(err.message || "Failed to load profile");
     }
   };
 
@@ -150,6 +126,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const signIn = async (email: string, password: string) => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+    // Auth state listener will handle the rest (user set, profile load)
+  };
+
+  const signUp = async (email: string, password: string, metaData?: any) => {
+    // We explicitly set options to prevent auto-login loops if confirmation is needed
+    // But currently Supabase behaves based on project config.
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: metaData,
+        // Redirect to a specific confirmation page or login?
+        // User requested: "Confirmation link should redirect to localhost in dev / vercel in prod"
+        // We use window.location.origin to get the current domain dynamically
+        emailRedirectTo: `${window.location.origin}/login`
+      }
+    });
+    if (error) throw error;
+  };
+
   const signOut = async () => {
     await supabase.auth.signOut();
     setUser(null);
@@ -157,7 +156,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, signOut, refreshProfile }}>
+    <AuthContext.Provider value={{ user, profile, loading, profileError, signIn, signUp, signOut, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );

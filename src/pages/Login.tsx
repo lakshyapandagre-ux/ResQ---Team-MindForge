@@ -11,7 +11,7 @@ import { useAuth } from "@/contexts/AuthContext";
 
 export function Login() {
     const navigate = useNavigate();
-    const { user, profile, loading: authLoading } = useAuth();
+    const { user, profile, loading: authLoading, signIn } = useAuth();
     const [loading, setLoading] = useState(false);
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
@@ -28,22 +28,21 @@ export function Login() {
         setLoading(true);
 
         try {
-            const { error } = await supabase.auth.signInWithPassword({
-                email,
-                password
-            });
-
-            if (error) throw error;
-
+            await signIn(email, password);
             toast.success("Login successful!");
-
-            // Don't navigate immediately - let the useEffect handle it after profile loads
-
+            // No direct navigate - useEffect waits for profile
         } catch (error: any) {
-            toast.error(error.message || "Failed to login");
+            console.error("Login error:", error);
+            // Handle specific Supabase errors if needed
+            if (error.message.includes("Email not confirmed")) {
+                toast.error("Please confirm your email address before logging in.");
+            } else if (error.message.includes("Invalid login credentials")) {
+                toast.error("Invalid email or password.");
+            } else {
+                toast.error(error.message || "Failed to login");
+            }
             setLoading(false);
         }
-        // Don't set loading to false on success - keep showing loader until redirect
     };
 
 

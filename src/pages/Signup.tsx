@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
+import { db } from "@/lib/db";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,7 +13,7 @@ import { useAuth } from "@/contexts/AuthContext";
 
 export function Signup() {
     const navigate = useNavigate();
-    const { user, profile, loading: authLoading } = useAuth();
+    const { user, profile, loading: authLoading, signUp } = useAuth();
     const [loading, setLoading] = useState(false);
     const [step, setStep] = useState(1);
 
@@ -26,7 +27,8 @@ export function Signup() {
         city: "Indore"
     });
 
-    // Redirect authenticated users with loaded profiles
+    // Only redirect if we are ALREADY authenticated when entering the page
+    // or if auto-login happened and profile is fully loaded.
     useEffect(() => {
         if (!authLoading && user && profile) {
             navigate('/', { replace: true });
@@ -38,40 +40,28 @@ export function Signup() {
         setLoading(true);
 
         try {
-            // Sign up auth user
-            const { data: authData, error: authError } = await supabase.auth.signUp({
-                email: formData.email,
-                password: formData.password,
-                options: {
-                    data: {
-                        full_name: formData.fullName,
-                        city: formData.city
-                    }
-                }
+            const metaData = {
+                full_name: formData.fullName,
+                city: formData.city,
+                role: role,
+                phone: formData.phone // Pass phone in metadata so trigger can pick it up if updated
+            };
+
+            // Use the centralized signUp method
+            // This handles the redirect URL and metadata
+            await signUp(formData.email, formData.password, metaData);
+
+            toast.success("Account created successfully!", {
+                description: "Please check your email to confirm your account before logging in."
             });
 
-            if (authError) throw authError;
+            // Redirect to login page to prevent auto-login confusion
+            navigate('/login');
 
-            if (authData.user) {
-                // Update profile with role (getOrCreateProfile will create if not exists)
-                try {
-                    await supabase.from('profiles').update({
-                        role: role,
-                        name: formData.fullName,
-                        phone: formData.phone || null
-                    }).eq('id', authData.user.id);
-                } catch (updateError) {
-                    console.log('Profile update skipped (will be created on login)');
-                }
-
-                toast.success("Account created successfully!");
-                // Don't navigate immediately - let the useEffect handle it after profile loads
-            }
         } catch (error: any) {
             toast.error(error.message || "Failed to create account");
             setLoading(false);
         }
-        // Don't set loading to false on success - keep showing loader until redirect
     };
 
     return (
