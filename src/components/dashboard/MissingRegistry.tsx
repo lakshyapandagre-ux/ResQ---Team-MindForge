@@ -61,6 +61,7 @@ export function MissingRegistry() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [imageFile, setImageFile] = useState<File | null>(null);
     const [imagePreview, setImagePreview] = useState<string | null>(null);
+    const [error, setError] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const form = useForm<z.infer<typeof reportSchema>>({
@@ -98,12 +99,16 @@ export function MissingRegistry() {
     }, []);
 
     const fetchReports = async () => {
+        setError(null);
         try {
             const data = await db.getMissingReports();
             // Handle legacy data mapping if necessary, or just cast
             setReports(data as unknown as MissingReport[]);
-        } catch (error) {
+        } catch (error: any) {
             console.error("Failed to fetch missing reports:", error);
+            const msg = error.message || "Failed to load reports";
+            setError(msg);
+            toast.error(msg);
         }
     };
 
@@ -219,7 +224,16 @@ export function MissingRegistry() {
             {/* SECTION 1: Reports Feed (Now at Top) */}
             <div className="space-y-6">
                 <div className="space-y-4">
-                    {filteredReports.length === 0 ? (
+                    {error ? (
+                        <div className="flex flex-col items-center justify-center py-16 text-center bg-red-50 rounded-xl border border-red-200 px-4">
+                            <AlertCircle className="w-12 h-12 mb-3 text-red-500" />
+                            <h3 className="text-lg font-bold text-red-700">Unable to load registry</h3>
+                            <p className="text-red-600 mb-4 max-w-md">{error}</p>
+                            <Button variant="outline" onClick={fetchReports} className="border-red-200 hover:bg-red-100 text-red-700">
+                                Try Again
+                            </Button>
+                        </div>
+                    ) : filteredReports.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-16 text-muted-foreground bg-white/40 rounded-xl border border-dashed">
                             <User className="w-12 h-12 mb-2 opacity-20" />
                             <p>No active missing {activeType}s.</p>

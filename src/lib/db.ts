@@ -17,17 +17,7 @@ async function withRetry<T>(
     }
 }
 
-async function safeFetch<T>(fn: () => Promise<T>, fallbackValue: T): Promise<T> {
-    try {
-        return await withRetry(fn);
-    } catch (error: any) {
-        if (error?.name === 'AbortError') {
-            return fallbackValue;
-        }
-        console.error('Safe fetch error:', error);
-        return fallbackValue;
-    }
-}
+
 
 
 export interface Profile {
@@ -167,7 +157,7 @@ export const db = {
 
     // Complaints
     async getComplaints(filter: 'trending' | 'latest' | 'critical' | 'near_me' = 'latest', userLat?: number, userLng?: number) {
-        return safeFetch(async () => {
+        return withRetry(async () => {
             let query = supabase
                 .from('complaints')
                 .select(`
@@ -214,7 +204,7 @@ export const db = {
             }
 
             return processed;
-        }, []);
+        });
     },
 
     async uploadImage(file: File, bucket: string = 'complaint-images') {
@@ -280,7 +270,7 @@ export const db = {
 
     // Missing Reports (Production Schema)
     async getMissingReports() {
-        return safeFetch(async () => {
+        return withRetry(async () => {
             const { data, error } = await supabase
                 .from('missing_reports')
                 .select('*')
@@ -294,7 +284,7 @@ export const db = {
                 throw error;
             }
             return data;
-        }, []);
+        });
     },
 
     async createMissingReport(report: {

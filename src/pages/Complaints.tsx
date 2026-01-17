@@ -18,9 +18,11 @@ export function Complaints() {
     const [isLoading, setIsLoading] = useState(true);
     const [visibleCount, setVisibleCount] = useState(3);
     const [userLoc, setUserLoc] = useState<{ lat: number, lng: number } | undefined>(undefined);
+    const [error, setError] = useState<string | null>(null);
 
     const fetchData = async () => {
         setIsLoading(true);
+        setError(null);
         try {
             const data = await db.getComplaints(
                 activeTab as any,
@@ -54,9 +56,11 @@ export function Complaints() {
             }));
 
             setComplaints(transformed);
-        } catch (error) {
+        } catch (error: any) {
             console.error(error);
-            toast.error("Failed to load complaints");
+            const msg = error.message || "Failed to load complaints";
+            setError(msg);
+            toast.error(msg);
         } finally {
             setIsLoading(false);
         }
@@ -166,6 +170,15 @@ export function Complaints() {
                         [1, 2, 3].map((i) => (
                             <div key={i} className="h-64 bg-slate-100 rounded-xl animate-pulse" />
                         ))
+                    ) : error ? (
+                        <div className="text-center py-20 bg-red-50 rounded-xl border border-red-100">
+                            <AlertTriangle className="h-10 w-10 text-red-500 mx-auto mb-3" />
+                            <h3 className="text-lg font-bold text-red-700">Unable to load feed</h3>
+                            <p className="text-red-600 mb-4">{error}</p>
+                            <Button variant="outline" onClick={fetchData} className="border-red-200 hover:bg-red-100 text-red-700">
+                                Retry
+                            </Button>
+                        </div>
                     ) : (
                         displayedComplaints.map((complaint) => (
                             <div key={complaint.id} className="animate-in slide-in-from-bottom-4 duration-500 fade-in fill-mode-backwards" style={{ animationDelay: `${Number(complaint.id.substring(0, 2)) * 10 || 100}ms` }}>
@@ -174,7 +187,7 @@ export function Complaints() {
                         ))
                     )}
 
-                    {!isLoading && complaints.length === 0 && (
+                    {!isLoading && !error && complaints.length === 0 && (
                         <div className="text-center py-20 text-slate-400">
                             <p>No complaints found.</p>
                             {activeTab === 'near_me' && <p className="text-xs mt-2">Try adjusting your location or checking other tabs.</p>}

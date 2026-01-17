@@ -92,11 +92,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       console.log("[Auth] Loading profile...");
 
-      const { data } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", user.id)
-        .maybeSingle();
+      // Create a timeout promise that rejects after 10 seconds
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Profile load timed out")), 10000)
+      );
+
+      // Race the DB query against the timeout
+      const { data, error } = await Promise.race([
+        supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", user.id)
+          .maybeSingle(),
+        timeoutPromise
+      ]) as any;
+
+      if (error) {
+        throw error;
+      }
 
       if (!data) {
         console.warn("[Auth] Profile missing, creating...");
@@ -127,6 +140,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (err) {
       console.error("[Auth] Profile load failed:", err);
+      // Ensure we don't block the app if profile fails
     }
   };
 
