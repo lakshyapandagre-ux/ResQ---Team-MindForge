@@ -213,17 +213,29 @@ function UserEventsList({ userId }: { userId: string }) {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        let isActive = true;
+
         const fetchUserEvents = async () => {
             try {
                 const data = await db.getUserRegistrations(userId);
-                setRegistrations(data);
-            } catch (err) {
+                if (isActive) {
+                    setRegistrations(data);
+                }
+            } catch (err: any) {
+                if (err.name === 'AbortError') return;
                 console.error(err);
             } finally {
-                setLoading(false);
+                if (isActive) {
+                    setLoading(false);
+                }
             }
         };
+
         fetchUserEvents();
+
+        return () => {
+            isActive = false;
+        };
     }, [userId]);
 
     if (loading) return <Loader2 className="h-5 w-5 animate-spin mx-auto my-4" />;

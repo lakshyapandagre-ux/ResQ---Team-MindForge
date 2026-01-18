@@ -1,7 +1,11 @@
+
 import { useState, useEffect } from "react";
-import { ShieldCheck, AlertCircle, Siren, Timer } from "lucide-react";
+import { ShieldCheck, AlertCircle, Siren, Timer, Activity } from "lucide-react";
 import { StatusMetricCard } from "./StatusMetricCard";
+import { StatCardSkeleton } from "@/components/skeletons/StatCardSkeleton";
 import { supabase } from "@/lib/supabase";
+import useEmblaCarousel from "embla-carousel-react";
+import { cn } from "@/lib/utils";
 
 interface CityStats {
     safeZones: number;
@@ -17,6 +21,17 @@ export function CityStatusBar() {
         emergencies: 0,
         avgResponseMin: 12
     });
+
+    const [loading, setLoading] = useState(true);
+
+    // Embla Carousel Hook
+    const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true });
+    const [selectedIndex, setSelectedIndex] = useState(0);
+
+    useEffect(() => {
+        if (!emblaApi) return;
+        emblaApi.on("select", () => setSelectedIndex(emblaApi.selectedScrollSnap()));
+    }, [emblaApi]);
 
     useEffect(() => {
         const fetchStats = async () => {
@@ -39,6 +54,7 @@ export function CityStatusBar() {
                 // Simple calculation for safe zones based on issues
                 safeZones: Math.max(80, 100 - ((issueCount || 0) * 0.5)),
             }));
+            setLoading(false);
         };
 
         fetchStats();
@@ -55,93 +71,129 @@ export function CityStatusBar() {
         };
     }, []);
 
+    const slides = [
+        {
+            id: 'safe-zones',
+            component: (
+                <StatusMetricCard
+                    icon={ShieldCheck}
+                    value={stats.safeZones}
+                    label="Safety Score"
+                    subLabel="City-wide"
+                    suffix="%"
+                    color="text-emerald-400"
+                    bgColor="bg-emerald-400/20"
+                />
+            )
+        },
+        {
+            id: 'issues',
+            component: (
+                <StatusMetricCard
+                    icon={AlertCircle}
+                    value={stats.activeIssues}
+                    label="Active Issues"
+                    subLabel="Being Resolved"
+                    color="text-amber-400"
+                    bgColor="bg-amber-400/20"
+                />
+            )
+        },
+        {
+            id: 'emergency',
+            component: (
+                <StatusMetricCard
+                    icon={Siren}
+                    value={stats.emergencies}
+                    label="Emergencies"
+                    subLabel={stats.emergencies > 0 ? "Action Required" : "All Clear"}
+                    isCritical={stats.emergencies > 0}
+                    color={stats.emergencies > 0 ? "text-red-500" : "text-green-400"}
+                    bgColor={stats.emergencies > 0 ? "bg-red-500/20" : "bg-green-400/20"}
+                />
+            )
+        },
+        {
+            id: 'response',
+            component: (
+                <StatusMetricCard
+                    icon={Timer}
+                    value={stats.avgResponseMin}
+                    label="Avg Response"
+                    subLabel="Minutes"
+                    suffix="m"
+                    color="text-cyan-400"
+                    bgColor="bg-cyan-400/20"
+                />
+            )
+        }
+    ];
+
     return (
-        <div className="relative w-full overflow-hidden rounded-[2.5rem] shadow-2xl shadow-emerald-900/20 group md:min-h-[200px]">
-            {/* Background Image Parallax/Static */}
+        <div className="relative w-full overflow-hidden rounded-[2.5rem] shadow-xl group md:min-h-[220px] transition-all duration-500 hover:shadow-2xl">
+            {/* Lively Background */}
             <div className="absolute inset-0 z-0">
                 <img
                     src="https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=800&auto=format&fit=crop&q=80"
                     alt="City Skyline"
-                    className="h-full w-full object-cover transition-transform duration-[20s] ease-linear group-hover:scale-110"
+                    className="h-full w-full object-cover transition-transform duration-[30s] ease-linear scale-100 group-hover:scale-110"
                 />
-                <div className="absolute inset-0 bg-gradient-to-r from-teal-900/95 via-emerald-900/80 to-slate-900/50 mix-blend-multiply" />
-                <div className="absolute inset-0 bg-black/20" /> {/* Extra darken for text contrast */}
+
+                {/* Dynamic Gradient Overlay */}
+                <div className={cn(
+                    "absolute inset-0 transition-colors duration-1000 mix-blend-multiply",
+                    stats.emergencies > 0
+                        ? "bg-gradient-to-r from-red-900/90 to-slate-900/80"
+                        : "bg-gradient-to-r from-teal-900/95 via-emerald-900/80 to-slate-900/50"
+                )} />
+                <div className="absolute inset-0 bg-black/10" />
             </div>
 
             {/* Content Container */}
-            <div className="relative z-10 p-5 md:p-8 flex flex-col justify-center h-full">
+            <div className="relative z-10 px-6 py-6 flex flex-col justify-center h-full">
 
-                {/* Header (Optional, small status indicator) */}
-                <div className="mb-6 flex items-center justify-between">
+                {/* Header Row */}
+                <div className="mb-4 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                         <span className="relative flex h-3 w-3">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                            <span className={cn("animate-ping absolute inline-flex h-full w-full rounded-full opacity-75", stats.emergencies > 0 ? 'bg-red-400' : 'bg-emerald-400')}></span>
+                            <span className={cn("relative inline-flex rounded-full h-3 w-3", stats.emergencies > 0 ? 'bg-red-500' : 'bg-emerald-500')}></span>
                         </span>
-                        <span className="text-xs font-bold uppercase tracking-widest text-emerald-100/90 drop-shadow-md">
-                            Live City Status
+                        <span className="text-xs font-extrabold uppercase tracking-widest text-white/90 drop-shadow-sm">
+                            Live Status
                         </span>
                     </div>
-                    <div className="text-[10px] bg-white/10 px-2 py-1 rounded backdrop-blur text-white/80 font-mono">
-                        UPDATED NOW
+
+                    {/* Pagination Dots */}
+                    <div className="flex gap-1.5">
+                        {slides.map((_, idx) => (
+                            <div
+                                key={idx}
+                                className={cn(
+                                    "h-1.5 rounded-full transition-all duration-300 shadow-sm",
+                                    idx === selectedIndex ? "w-4 bg-white" : "w-1.5 bg-white/30"
+                                )}
+                            />
+                        ))}
                     </div>
                 </div>
 
-                {/* Metrics Grid */}
-                {/* Mobile: Horizontal Scroll (snap-x), Tablet: 2x2, Desktop: 1x4 */}
-                <div className="flex overflow-x-auto pb-4 md:pb-0 gap-3 md:gap-4 md:grid md:grid-cols-2 lg:grid-cols-4 snap-x snap-mandatory hide-scrollbar">
-
-                    {/* 1. Safe Zones */}
-                    <div className="min-w-[85%] md:min-w-0 snap-center">
-                        <StatusMetricCard
-                            icon={ShieldCheck}
-                            value={stats.safeZones}
-                            label="Safe Zones"
-                            subLabel="Operational"
-                            suffix="%"
-                            color="text-emerald-400"
-                            bgColor="bg-emerald-400/20"
-                        />
+                {/* Carousel */}
+                <div className="overflow-hidden" ref={emblaRef}>
+                    <div className="flex -ml-4">
+                        {slides.map((slide) => (
+                            <div key={slide.id} className="min-w-0 flex-[0_0_100%] sm:flex-[0_0_50%] md:flex-[0_0_33.33%] pl-4">
+                                <div className="h-full transform transition-all duration-300 hover:-translate-y-1">
+                                    {loading ? <StatCardSkeleton /> : slide.component}
+                                </div>
+                            </div>
+                        ))}
                     </div>
+                </div>
 
-                    {/* 2. Active Issues */}
-                    <div className="min-w-[85%] md:min-w-0 snap-center">
-                        <StatusMetricCard
-                            icon={AlertCircle}
-                            value={stats.activeIssues}
-                            label="Active Issues"
-                            subLabel="Being Resolved"
-                            color="text-amber-400"
-                            bgColor="bg-amber-400/20"
-                        />
-                    </div>
-
-                    {/* 3. Emergency Alerts */}
-                    <div className="min-w-[85%] md:min-w-0 snap-center">
-                        <StatusMetricCard
-                            icon={Siren}
-                            value={stats.emergencies}
-                            label="Emergencies"
-                            subLabel={stats.emergencies > 0 ? "Action Required" : "All Clear"}
-                            isCritical={stats.emergencies > 0}
-                            color={stats.emergencies > 0 ? "text-red-500" : "text-slate-300"}
-                            bgColor={stats.emergencies > 0 ? "bg-red-500/20" : "bg-white/10"}
-                        />
-                    </div>
-
-                    {/* 4. Response Time */}
-                    <div className="min-w-[85%] md:min-w-0 snap-center">
-                        <StatusMetricCard
-                            icon={Timer}
-                            value={stats.avgResponseMin}
-                            label="Avg Response"
-                            subLabel="Minutes"
-                            suffix="m"
-                            color="text-cyan-400"
-                            bgColor="bg-cyan-400/20"
-                        />
-                    </div>
-
+                <div className="mt-4 text-[10px] text-white/60 font-medium text-center md:text-left flex items-center gap-1.5">
+                    <Activity className="h-3 w-3" />
+                    Updates automatically in real-time
                 </div>
             </div>
         </div>

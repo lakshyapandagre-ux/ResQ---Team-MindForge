@@ -1,0 +1,20 @@
+src/components/dashboard/CityAlertTimeline.tsx(4,5): error TS6133: 'AlertTriangle' is declared but its value is never read.
+src/components/dashboard/CityAlertTimeline.tsx(4,20): error TS6133: 'Clock' is declared but its value is never read.
+src/components/dashboard/CityAlertTimeline.tsx(21,11): error TS6133: 'handleShare' is declared but its value is never read.
+src/components/dashboard/CityAlertTimeline.tsx(92,31): error TS6133: 'Icon' is declared but its value is never read.
+src/components/dashboard/CityAlertTimeline.tsx(117,44): error TS2339: Property 'imageUrl' does not exist on type 'Alert'.
+src/components/dashboard/CityAlertTimeline.tsx(119,61): error TS2339: Property 'imageUrl' does not exist on type 'Alert'.
+src/components/dashboard/CityAlertTimeline.tsx(132,57): error TS2339: Property 'imageUrl' does not exist on type 'Alert'.
+src/components/dashboard/NearbyCivicCarousel.tsx(7,83): error TS6133: 'MapPin' is declared but its value is never read.
+src/components/emergency/ActionHub.tsx(10,5): error TS6133: 'DrawerFooter' is declared but its value is never read.
+src/components/emergency/EmergencyHeader.tsx(5,18): error TS6133: 'AnimatePresence' is declared but its value is never read.
+src/components/emergency/IncidentTimeline.tsx(4,50): error TS6133: 'Filter' is declared but its value is never read.
+src/components/emergency/IncidentTimeline.tsx(4,58): error TS6133: 'ChevronDown' is declared but its value is never read.
+src/components/emergency/TacticalMapPanel.tsx(3,1): error TS6133: 'Badge' is declared but its value is never read.
+src/components/rewards/PointsBanner.tsx(47,86): error TS2322: Type '{ value: number; className: string; indicatorClassName: string; }' is not assignable to type 'IntrinsicAttributes & Omit<ProgressProps & RefAttributes<HTMLDivElement>, "ref"> & RefAttributes<HTMLDivElement>'.
+  Property 'indicatorClassName' does not exist on type 'IntrinsicAttributes & Omit<ProgressProps & RefAttributes<HTMLDivElement>, "ref"> & RefAttributes<HTMLDivElement>'.
+src/pages/Login.tsx(3,1): error TS6133: 'supabase' is declared but its value is never read.
+src/pages/Signup.tsx(3,1): error TS6133: 'supabase' is declared but its value is never read.
+src/pages/Signup.tsx(4,1): error TS6133: 'db' is declared but its value is never read.
+src/pages/UpdatePassword.tsx(2,20): error TS6133: 'useEffect' is declared but its value is never read.
+src/pages/UpdatePassword.tsx(7,69): error TS6133: 'CardFooter' is declared but its value is never read.

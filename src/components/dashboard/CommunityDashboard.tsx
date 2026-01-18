@@ -6,7 +6,6 @@ import {
     Users,
     Gift
 } from "lucide-react";
-import SplitText from "@/components/SplitText";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import gsap from "gsap";
@@ -23,7 +22,7 @@ import { CityHeatmap } from "@/components/maps/CityHeatmap";
 import { JoinSquadModal } from "./JoinSquadModal";
 import { CityHeroLeaderboard } from "./CityHeroLeaderboard";
 import { AnnouncementsPanel } from "./AnnouncementsPanel";
-// ... (imports)
+import { NearbyCivicCarousel } from "./NearbyCivicCarousel";
 
 // ... inside render buffer ...
 {/* Dynamic Content Grid */ }
@@ -231,13 +230,24 @@ export function CommunityDashboard() {
                             <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${profile ? profile.name : 'Citizen'}`} />
                             <AvatarFallback>{profile ? profile.name[0] : 'C'}</AvatarFallback>
                         </Avatar>
-                        <div onClick={() => navigate('/profile')} className="cursor-pointer">
-                            <SplitText
-                                text={`Hi, ${profile ? profile.name : 'Citizen'}`}
-                                className="text-lg font-bold text-slate-800 dark:text-slate-100"
-                                delay={50}
-                            />
-                            <p className="text-xs font-semibold uppercase tracking-wider text-teal-600">Metropolis Guardian</p>
+                        <div onClick={() => navigate('/profile')} className="cursor-pointer group">
+                            <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                                {(() => {
+                                    const hour = new Date().getHours();
+                                    if (hour < 12) return 'Good Morning,';
+                                    if (hour < 18) return 'Good Afternoon,';
+                                    return 'Good Evening,';
+                                })()}
+                                <span className=" bg-gradient-to-r from-teal-600 to-emerald-600 bg-clip-text text-transparent">
+                                    {profile ? profile.name.split(' ')[0] : 'Citizen'}
+                                </span>
+                            </h2>
+                            <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 group-hover:text-teal-600 transition-colors">
+                                <span className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wider text-slate-400">
+                                    LVL {profile ? Math.floor(profile.points / 100) + 1 : 1}
+                                </span>
+                                <span>Metropolis Guardian</span>
+                            </div>
                         </div>
                     </div>
                     <Button variant="ghost" size="icon" className="relative rounded-full bg-white shadow-sm border border-slate-100 hover:bg-slate-50 dark:bg-slate-900 dark:border-slate-800">
@@ -292,6 +302,9 @@ export function CommunityDashboard() {
                     </div>
                 </div>
 
+                {/* Nearby Civic Carousel */}
+                <NearbyCivicCarousel />
+
                 {/* ActivityHub */}
                 <ActivityHub stats={{
                     points: profile ? profile.points : 0,
@@ -325,7 +338,11 @@ export function CommunityDashboard() {
                 {/* Floating Action Button for Mobile */}
                 <div className="fixed bottom-24 right-6 z-40 md:hidden pointer-events-none">
                     <div className="pointer-events-auto shadow-xl rounded-full">
-                        <Button size="icon" className="h-14 w-14 rounded-full bg-teal-600 hover:bg-teal-700 shadow-none border-none">
+                        <Button
+                            size="icon"
+                            className="h-14 w-14 rounded-full bg-teal-600 hover:bg-teal-700 shadow-none border-none"
+                            onClick={() => navigate('/complaints')}
+                        >
                             <Plus className="h-6 w-6 text-white" />
                         </Button>
                     </div>

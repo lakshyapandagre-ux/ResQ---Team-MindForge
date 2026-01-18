@@ -10,8 +10,13 @@ async function withRetry<T>(
     try {
         return await fn();
     } catch (error: any) {
-        if (retries === 0 || error?.name === 'AbortError') throw error;
-        // console.warn(`Retrying... attempts left: ${retries}`, error.message);
+        // Don't retry if the user aborted the request (navigation, etc.)
+        if (error.name === 'AbortError') {
+            throw error;
+        }
+
+        // For Supabase lock errors or network jitters, we retry.
+        if (retries === 0) throw error;
         await new Promise(resolve => setTimeout(resolve, delay));
         return withRetry(fn, retries - 1, delay * backoff, backoff);
     }
@@ -31,6 +36,7 @@ export interface Profile {
     points: number;
     reports_count: number;
     resolved_count: number;
+    avatar_url?: string;
     area_id?: string;
     language?: string;
     notification_preferences?: any;
@@ -89,59 +95,68 @@ export interface ComplaintData {
 export const db = {
     // Profiles
     async getOrCreateProfile(user: any, role: string = 'citizen') {
-        // 1. Try to fetch existing profile
-        const { data, error } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', user.id)
-            .maybeSingle();
+        return withRetry(async () => {
+            // 1. Try to fetch existing profile
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', user.id)
+                .maybeSingle();
 
-        if (error) {
-            console.error("Profile fetch error:", error);
-            throw error;
-        }
+            if (error) {
+                // Ignore logging for AbortError
+                if (!error.message?.includes('AbortError')) {
+                    console.error("Profile fetch error:", error);
+                }
+                throw error;
+            }
 
-        // 2. If profile exists, return it
-        if (data) return data;
+            // 2. If profile exists, return it
+            if (data) return data;
 
-        // 3. If not found, create new profile (using upsert to handle race conditions)
-        console.log("Creating new profile for user:", user.email);
+            // 3. If not found, create new profile (using upsert to handle race conditions)
+            console.log("Creating new profile for user:", user.email);
 
-        const newProfileData = {
-            id: user.id,
-            name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Citizen',
-            email: user.email,
-            phone: user.phone || null,
-            role: role, // Use the passed role
-            city: user.user_metadata?.city || 'Indore',
-            status: 'active',
-            points: 0,
-            reports_count: 0,
-            resolved_count: 0
-        };
+            const newProfileData = {
+                id: user.id,
+                name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Citizen',
+                email: user.email,
+                phone: user.phone || null,
+                role: role, // Use the passed role
+                city: user.user_metadata?.city || 'Indore',
+                status: 'active',
+                points: 0,
+                reports_count: 0,
+                resolved_count: 0
+            };
 
-        const { data: newProfile, error: insertError } = await supabase
-            .from('profiles')
-            .upsert([newProfileData]) // upsert allows overwriting if it was created milliseconds ago
-            .select()
-            .single();
+            const { data: newProfile, error: insertError } = await supabase
+                .from('profiles')
+                .upsert([newProfileData]) // upsert allows overwriting if it was created milliseconds ago
+                .select()
+                .single();
 
-        if (insertError) {
-            console.error("Profile creation error:", insertError);
-            throw insertError;
-        }
+            if (insertError) {
+                if (!insertError.message?.includes('AbortError')) {
+                    console.error("Profile creation error:", insertError);
+                }
+                throw insertError;
+            }
 
-        return newProfile;
+            return newProfile;
+        });
     },
 
     async getProfile(userId: string) {
-        const { data, error } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', userId)
-            .single();
-        if (error) throw error;
-        return data as Profile;
+        return withRetry(async () => {
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', userId)
+                .single();
+            if (error) throw error;
+            return data as Profile;
+        });
     },
 
     async updateProfile(userId: string, updates: Partial<Profile>) {
@@ -567,6 +582,33 @@ export const db = {
 
         if (error) throw error;
         return data;
+    },
+
+    // Leaderboard
+    async getHeroes(limit = 10) {
+        return withRetry(async () => {
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('id, name, city, points, reports_count, resolved_count')
+                .order('points', { ascending: false })
+                .limit(limit);
+
+            if (error) {
+                if (error.code === '42P01') return []; // Table doesn't exist
+                throw error;
+            }
+
+            return data.map((p: any) => ({
+                id: p.id,
+                name: p.name || 'Citizen',
+                avatar_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${p.name || p.id}`,
+                city: p.city || 'Indore',
+                points: p.points || 0,
+                reports_count: p.reports_count || 0,
+                resolved_count: p.resolved_count || 0,
+                rank_change: 'same' as const
+            }));
+        });
     },
 
     // Actions

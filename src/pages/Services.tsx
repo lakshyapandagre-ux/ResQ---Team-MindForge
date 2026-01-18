@@ -55,7 +55,7 @@ export function ServicesPage() {
 
     return (
         <div className="max-w-4xl mx-auto p-4 md:p-8 space-y-6 animate-in fade-in duration-500">
-            <Button variant="ghost" onClick={() => navigate(-1)} className="mb-4 pl-0 hover:bg-transparent">
+            <Button variant="ghost" onClick={() => navigate('/')} className="mb-4 pl-0 hover:bg-transparent">
                 <ArrowLeft className="mr-2 h-4 w-4" /> Back to Dashboard
             </Button>
 

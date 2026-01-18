@@ -16,6 +16,7 @@ export interface Alert {
     severity: Severity;
     icon: any;
     link?: string;
+    imageUrl?: string;
 }
 
 // 1. Real Weather API (OpenMeteo)
@@ -66,7 +67,8 @@ async function fetchWeatherAlerts(): Promise<Alert[]> {
 async function fetchNewsAlerts(): Promise<Alert[]> {
     try {
         // Query for Indore specific topics: Traffic, Police, Accident, Nagar Nigam, Power
-        const rssUrl = encodeURIComponent('https://news.google.com/rss/search?q=Indore+traffic+OR+accident+OR+police+OR+electricity+OR+nagar+nigam&hl=en-IN&gl=IN&ceid=IN:en');
+        // Query for Indore specific topics - broadened for more real-time updates
+        const rssUrl = encodeURIComponent('https://news.google.com/rss/search?q=Indore+when:2d&hl=en-IN&gl=IN&ceid=IN:en');
         const res = await fetch(`https://api.rss2json.com/v1/api.json?rss_url=${rssUrl}`);
         const data = await res.json();
 
@@ -126,11 +128,26 @@ async function fetchNewsAlerts(): Promise<Alert[]> {
     }
 }
 
-export function useCityAlerts() {
-    const [alerts, setAlerts] = useState<Alert[]>([]);
-    const [loading, setLoading] = useState(true);
+// In-memory cache
+let cachedData: Alert[] | null = null;
+let lastFetchTime = 0;
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
-    const refresh = async () => {
+export function useCityAlerts() {
+    const [alerts, setAlerts] = useState<Alert[]>(cachedData || []);
+    // Only load if we don't have cached data
+    const [loading, setLoading] = useState(!cachedData);
+
+    const refresh = async (force = false) => {
+        const now = Date.now();
+
+        // Return cached data if valid and not forcing
+        if (!force && cachedData && (now - lastFetchTime < CACHE_DURATION)) {
+            setAlerts(cachedData);
+            setLoading(false);
+            return;
+        }
+
         setLoading(true);
         try {
             const [weather, news] = await Promise.all([
@@ -156,6 +173,10 @@ export function useCityAlerts() {
                 });
             }
 
+            // Update cache
+            cachedData = combined;
+            lastFetchTime = Date.now();
+
             setAlerts(combined);
         } catch (e) {
             console.error(e);
@@ -168,5 +189,5 @@ export function useCityAlerts() {
         refresh();
     }, []);
 
-    return { alerts, loading, refresh };
+    return { alerts, loading, refresh: () => refresh(true) };
 }

@@ -16,20 +16,31 @@ export function ActivityFeed({ userId }: { userId: string }) {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        let isActive = true;
+
         const loadActivities = async () => {
             try {
                 const data = await db.getRecentActivities(userId);
-                setActivities(data || []);
-            } catch (err) {
+                if (isActive) {
+                    setActivities(data || []);
+                }
+            } catch (err: any) {
+                if (err.name === 'AbortError') return;
                 console.error("Failed to load activities", err);
             } finally {
-                setLoading(false);
+                if (isActive) {
+                    setLoading(false);
+                }
             }
         };
 
         if (userId) {
             loadActivities();
         }
+
+        return () => {
+            isActive = false;
+        };
     }, [userId]);
 
     const getIcon = (type: string) => {

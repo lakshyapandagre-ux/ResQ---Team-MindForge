@@ -16,7 +16,16 @@ import { ParkingServicePage } from "@/services/ParkingServicePage";
 import { PowerServicePage } from "@/services/PowerServicePage";
 import { WifiServicePage } from "@/services/WifiServicePage";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 minutes (data remains fresh)
+      gcTime: 10 * 60 * 1000,   // 10 minutes (garbage collection time)
+      retry: 1,
+      refetchOnWindowFocus: false, // Prevent background refetching on tab switch
+    },
+  },
+});
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
@@ -28,6 +37,9 @@ import { AppBootstrap } from "@/components/AppBootstrap";
 import { OnboardingContainer } from "@/onboarding/OnboardingContainer";
 import { LoginGuard } from "@/onboarding/LoginGuard";
 import { Unauthorized } from "@/pages/Unauthorized";
+import { ForgotPassword } from "@/pages/ForgotPassword";
+import { UpdatePassword } from "@/pages/UpdatePassword";
+import EmergencyDashboard from "@/pages/EmergencyDashboard";
 
 const App = () => (
   <ErrorBoundary>
@@ -39,12 +51,17 @@ const App = () => (
           <AppBootstrap>
             <BrowserRouter>
               <Routes>
+                {/* Emergency Command Center - Isolated */}
+                <Route path="/emergency" element={<EmergencyDashboard />} />
+
                 {/* Onboarding */}
                 <Route path="/onboarding" element={<OnboardingContainer />} />
 
                 {/* Public Routes */}
                 <Route path="/login" element={<LoginGuard />} />
                 <Route path="/signup" element={<Signup />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/update-password" element={<UpdatePassword />} />
                 <Route path="/unauthorized" element={<Unauthorized />} />
 
                 {/* Protected Routes */}

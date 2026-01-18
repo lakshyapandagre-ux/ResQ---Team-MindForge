@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Send, Loader2, MessageSquare } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,7 +29,7 @@ export function CommentsSection({ parentId, parentType }: CommentsSectionProps) 
     const [sending, setSending] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
 
-    const fetchComments = async () => {
+    const fetchComments = useCallback(async () => {
         try {
             const data = await db.getComments(parentId);
             setComments(data);
@@ -42,7 +42,7 @@ export function CommentsSection({ parentId, parentType }: CommentsSectionProps) 
             console.error("Failed to load comments", error);
             setLoading(false);
         }
-    };
+    }, [parentId]);
 
     useEffect(() => {
         fetchComments();
@@ -63,7 +63,7 @@ export function CommentsSection({ parentId, parentType }: CommentsSectionProps) 
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [parentId]);
+    }, [parentId, fetchComments]);
 
     const handleSend = async (e: React.FormEvent) => {
         e.preventDefault();

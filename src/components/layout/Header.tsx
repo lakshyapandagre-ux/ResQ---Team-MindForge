@@ -36,7 +36,7 @@ import {
 } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/contexts/AuthContext";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 interface HeaderProps {
     mode: AppMode;
@@ -46,6 +46,7 @@ interface HeaderProps {
 
 export function Header({ mode, onMenuToggle }: Omit<HeaderProps, 'onModeChange'>) {
     const { profile, signOut } = useAuth();
+    const navigate = useNavigate();
     const [theme, setTheme] = useState<'light' | 'dark'>(() => {
         if (typeof window !== 'undefined') {
             return (localStorage.getItem('theme') as 'light' | 'dark') || 'light';
@@ -82,6 +83,29 @@ export function Header({ mode, onMenuToggle }: Omit<HeaderProps, 'onModeChange'>
         }
     };
 
+    const fetchNotifications = async () => {
+        if (!profile?.id) return;
+        try {
+            const data = await db.getNotifications(profile.id);
+            // Transform for UI
+            const mapped = data.map((n: any) => ({
+                id: n.id,
+                title: n.title,
+                desc: n.message,
+                type: n.type,
+                read: n.read,
+                time: formatDistanceToNow(new Date(n.created_at), { addSuffix: true }),
+                // Visuals based on type
+                ...getNotificationStyle(n.type)
+            }));
+            setNotifications(mapped);
+            setUnreadCount(mapped.filter((n: any) => !n.read).length);
+        } catch (error: any) {
+            if (error.name === 'AbortError') return;
+            console.error(error);
+        }
+    };
+
     useEffect(() => {
         if (profile?.id) {
             fetchNotifications();
@@ -105,28 +129,6 @@ export function Header({ mode, onMenuToggle }: Omit<HeaderProps, 'onModeChange'>
             };
         }
     }, [profile?.id]);
-
-    const fetchNotifications = async () => {
-        if (!profile?.id) return;
-        try {
-            const data = await db.getNotifications(profile.id);
-            // Transform for UI
-            const mapped = data.map((n: any) => ({
-                id: n.id,
-                title: n.title,
-                desc: n.message,
-                type: n.type,
-                read: n.read,
-                time: formatDistanceToNow(new Date(n.created_at), { addSuffix: true }),
-                // Visuals based on type
-                ...getNotificationStyle(n.type)
-            }));
-            setNotifications(mapped);
-            setUnreadCount(mapped.filter((n: any) => !n.read).length);
-        } catch (error) {
-            console.error(error);
-        }
-    };
 
     const markAsRead = async () => {
         if (unreadCount === 0) return;
@@ -250,6 +252,21 @@ export function Header({ mode, onMenuToggle }: Omit<HeaderProps, 'onModeChange'>
                                     </a>
                                 ))}
                             </div>
+
+                            {/* Navigation Link to Emergency Mode */}
+                            {/* Navigation Link to Emergency Mode */}
+                            <div className="mt-4 pt-1">
+                                <Button
+                                    className="w-full py-6 text-lg font-black tracking-wide text-white bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 shadow-xl shadow-red-200 border-0 transform transition-all hover:scale-[1.02] active:scale-95 group flex items-center justify-center gap-3 rounded-xl"
+                                    onClick={() => {
+                                        setIsSOSOpen(false);
+                                        navigate('/emergency');
+                                    }}
+                                >
+                                    <span>GO TO LIVE DASHBOARD</span>
+                                    <Ambulance className="w-6 h-6 animate-pulse" />
+                                </Button>
+                            </div>
                         </DialogContent>
                     </Dialog>
 
@@ -339,19 +356,23 @@ export function Header({ mode, onMenuToggle }: Omit<HeaderProps, 'onModeChange'>
                                 </div>
                             </div>
 
-                            <Link to="/profile">
-                                <DropdownMenuItem className="cursor-pointer rounded-md focus:bg-primary/5 mb-1">
-                                    <User className="mr-2 h-4 w-4 text-primary" />
-                                    <span>Full Profile</span>
-                                </DropdownMenuItem>
-                            </Link>
+                            <DropdownMenuItem onClick={() => navigate('/profile')} className="cursor-pointer rounded-md focus:bg-primary/5 mb-1">
+                                <User className="mr-2 h-4 w-4 text-primary" />
+                                <span>Full Profile</span>
+                            </DropdownMenuItem>
 
-                            <DropdownMenuItem className="cursor-pointer rounded-md focus:bg-primary/5 mb-1">
+                            <DropdownMenuItem onClick={() => navigate('/settings')} className="cursor-pointer rounded-md focus:bg-primary/5 mb-1">
                                 <Settings className="mr-2 h-4 w-4 text-primary" />
                                 <span className="w-full">Settings</span>
                             </DropdownMenuItem>
                             <DropdownMenuSeparator className="my-1 bg-border/50" />
-                            <DropdownMenuItem onClick={() => signOut()} className="text-red-600 focus:text-red-700 focus:bg-red-50 dark:focus:bg-red-950/20 cursor-pointer rounded-md">
+                            <DropdownMenuItem
+                                onClick={async () => {
+                                    await signOut();
+                                    navigate('/login');
+                                }}
+                                className="text-red-600 focus:text-red-700 focus:bg-red-50 dark:focus:bg-red-950/20 cursor-pointer rounded-md"
+                            >
                                 <LogOut className="mr-2 h-4 w-4" />
                                 <span>Log out</span>
                             </DropdownMenuItem>

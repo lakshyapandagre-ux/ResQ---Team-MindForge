@@ -1,12 +1,13 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { LeaderboardRow } from "./LeaderboardRow";
 import { LeaderboardTabs } from "./LeaderboardTabs";
 import { Trophy, Crown, Sparkles } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
-import { supabase } from "@/lib/supabase";
+import { db } from "@/lib/db";
 
 // Mock Data Types
 interface HeroProfile {
@@ -94,48 +95,10 @@ import { useAuth } from "@/contexts/AuthContext";
 export function CityHeroLeaderboard() {
     const { user } = useAuth();
     const [activeTab, setActiveTab] = useState<'weekly' | 'monthly'>('weekly');
-    const [heroes, setHeroes] = useState<HeroProfile[]>([]);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        const fetchHeroes = async () => {
-            setLoading(true);
-            try {
-                // 1. Fetch Profiles for Leaderboard
-                const { data, error } = await supabase
-                    .from('profiles')
-                    .select('id, name, city, points, reports_count, resolved_count')
-                    .order('points', { ascending: false })
-                    .limit(10);
-                // ... logic continues ...
-
-                if (error) {
-                    console.error("Fetch error:", error);
-                    return;
-                }
-
-                if (data) {
-                    const mapped = data.map((p: any) => ({
-                        id: p.id,
-                        name: p.name || 'Citizen',
-                        avatar_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${p.name || p.id}`,
-                        city: p.city || 'Indore',
-                        points: p.points || 0,
-                        reports_count: p.reports_count || 0,
-                        resolved_count: p.resolved_count || 0,
-                        rank_change: 'same' as const
-                    }));
-                    setHeroes(mapped);
-                }
-            } catch (err) {
-                console.error("Leaderboard error:", err);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchHeroes();
-    }, [activeTab]);
+    const { data: heroes = [], isLoading: loading } = useQuery({
+        queryKey: ['heroes', 'leaderboard', activeTab],
+        queryFn: () => db.getHeroes(10), // The db function already handles timeouts/retries
+    });
 
     const podiumHeroes = heroes.slice(0, 3);
 
@@ -162,13 +125,19 @@ export function CityHeroLeaderboard() {
                 <div className="h-[400px] flex items-center justify-center">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600"></div>
                 </div>
+            ) : heroes.length === 0 ? (
+                <div className="h-[200px] flex flex-col items-center justify-center text-slate-400">
+                    <Trophy className="w-12 h-12 mb-3 opacity-20" />
+                    <p className="text-sm font-medium">No heroes found properly.</p>
+                    <p className="text-xs opacity-70">Be the first to earn points!</p>
+                </div>
             ) : (
                 <>
                     {/* Podium */}
                     <div className="flex justify-center items-end gap-2 md:gap-8 mb-10 min-h-[180px]">
-                        <PodiumItem hero={podiumHeroes[1]} rank={2} />
-                        <PodiumItem hero={podiumHeroes[0]} rank={1} />
-                        <PodiumItem hero={podiumHeroes[2]} rank={3} />
+                        {podiumHeroes[1] && <PodiumItem hero={podiumHeroes[1]} rank={2} />}
+                        {podiumHeroes[0] && <PodiumItem hero={podiumHeroes[0]} rank={1} />}
+                        {podiumHeroes[2] && <PodiumItem hero={podiumHeroes[2]} rank={3} />}
                     </div>
 
                     {/* List */}

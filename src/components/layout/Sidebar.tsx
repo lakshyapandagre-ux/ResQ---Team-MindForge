@@ -90,8 +90,8 @@ export function Sidebar({ mode, isOpen, activeItem, onItemClick, onClose }: Side
 
                         <div className="relative z-10 flex items-center gap-4 mb-6">
                             <div className="relative">
-                                <Avatar className="h-12 w-12 border-2 border-white shadow-md ring-2 ring-teal-50">
-                                    <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${profile?.name || 'User'}`} />
+                                <Avatar className="h-12 w-12 border-2 border-white shadow-md ring-2 ring-teal-50 transition-transform hover:scale-105">
+                                    <AvatarImage src={profile?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile?.name || 'User'}`} />
                                     <AvatarFallback>{profile?.name?.[0] || 'U'}</AvatarFallback>
                                 </Avatar>
                                 <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-green-500 ring-2 ring-white"></span>
@@ -106,66 +106,73 @@ export function Sidebar({ mode, isOpen, activeItem, onItemClick, onClose }: Side
                         <div className="h-px w-full bg-gradient-to-r from-transparent via-slate-200 to-transparent dark:via-slate-800" />
                     </div>
 
-                    {/* Navigation Items */}
-                    <nav className="flex-1 px-4 py-2 space-y-1 overflow-y-auto">
-                        <p className="px-4 text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2 mt-2">Menu</p>
-                        {items.map((item) => {
-                            const isActive = activeItem === item.id;
-                            return (
-                                <button
-                                    key={item.id}
-                                    onClick={() => onItemClick(item.id)}
-                                    className={cn(
-                                        "group relative w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 overflow-hidden",
-                                        isActive
-                                            ? (isEmergency ? "bg-red-50 text-red-700 shadow-sm" : "bg-white text-blue-600 shadow-sm ring-1 ring-slate-100")
-                                            : "text-slate-500 hover:bg-white hover:text-slate-900 hover:shadow-sm"
-                                    )}
-                                >
-                                    {isActive && (
-                                        <div className={cn("absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-r-full", isEmergency ? "bg-red-500" : "bg-blue-600")} />
-                                    )}
-
-                                    <item.icon className={cn(
-                                        "h-5 w-5 transition-transform group-hover:scale-110",
-                                        isActive ? (isEmergency ? "text-red-600" : "text-blue-600") : "text-slate-400"
-                                    )} />
-
-                                    <span className="relative z-10">{item.label}</span>
-
-                                    {isActive && (
-                                        <div className="ml-auto">
-                                            <div className={cn("h-1.5 w-1.5 rounded-full", isEmergency ? "bg-red-500" : "bg-blue-600")} />
-                                        </div>
-                                    )}
-                                </button>
-                            );
-                        })}
-                    </nav>
-
-                    {/* Banner / Ad Space (Optional "Image" element as requested active-feel) */}
-                    {!isEmergency && (
-                        <div className="px-4 pb-2">
-                            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 p-4 text-white shadow-lg cursor-pointer hover:shadow-xl transition-shadow group">
-                                {/* Decorative circles */}
-                                <div className="absolute -right-4 -top-4 h-16 w-16 rounded-full bg-white/20 blur-xl group-hover:scale-110 transition-transform" />
-                                <div className="absolute -left-4 -bottom-4 h-16 w-16 rounded-full bg-black/10 blur-xl" />
-
-                                <div className="relative z-10">
-                                    <p className="text-xs font-medium text-indigo-100 mb-1">Upcoming Event</p>
-                                    <h4 className="text-sm font-bold mb-3">City Clean-up Drive</h4>
-                                    <Button
-                                        size="sm"
-                                        variant="secondary"
-                                        className="w-full h-8 text-xs font-semibold bg-white text-indigo-600 hover:bg-indigo-50 border-none shadow-none"
-                                        onClick={() => onItemClick('events')}
+                    {/* Navigation Items (Scrollable Area) */}
+                    <div className="flex-1 overflow-y-auto py-2 px-3 custom-scrollbar space-y-6">
+                        {/* Main Menu */}
+                        <nav className="space-y-1">
+                            <p className="px-4 text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Menu</p>
+                            {items.map((item) => {
+                                const isActive = activeItem === item.id;
+                                return (
+                                    <button
+                                        key={item.id}
+                                        onClick={() => onItemClick(item.id)}
+                                        className={cn(
+                                            "group relative w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 overflow-hidden",
+                                            isActive
+                                                ? (isEmergency ? "bg-red-50 text-red-700 shadow-sm translate-x-1" : "bg-white text-blue-600 shadow-sm ring-1 ring-slate-100 translate-x-1")
+                                                : "text-slate-500 hover:bg-white hover:text-slate-900 hover:shadow-sm hover:translate-x-1"
+                                        )}
                                     >
-                                        Register Now
-                                    </Button>
+                                        {isActive && (
+                                            <div className={cn("absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-r-full transition-all", isEmergency ? "bg-red-500" : "bg-blue-600")} />
+                                        )}
+
+                                        <item.icon className={cn(
+                                            "h-5 w-5 transition-transform group-hover:scale-110",
+                                            isActive ? (isEmergency ? "text-red-600" : "text-blue-600") : "text-slate-400 group-hover:text-slate-600"
+                                        )} />
+
+                                        <span className="relative z-10">{item.label}</span>
+
+                                        {isActive && (
+                                            <div className="ml-auto">
+                                                <div className={cn("h-1.5 w-1.5 rounded-full animate-bounce", isEmergency ? "bg-red-500" : "bg-blue-600")} />
+                                            </div>
+                                        )}
+                                    </button>
+                                );
+                            })}
+                        </nav>
+
+                        {/* Promo Card (Inside scrollable area to prevent overlap issues on small screens) */}
+                        {!isEmergency && (
+                            <div className="pt-2">
+                                <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 p-5 text-white shadow-lg cursor-pointer hover:shadow-xl transition-all group hover:scale-[1.02]">
+                                    {/* Decorative circles */}
+                                    <div className="absolute -right-4 -top-4 h-20 w-20 rounded-full bg-white/20 blur-xl group-hover:scale-110 transition-transform" />
+                                    <div className="absolute -left-4 -bottom-4 h-16 w-16 rounded-full bg-black/10 blur-xl" />
+
+                                    <div className="relative z-10">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <p className="text-[10px] font-bold uppercase tracking-wider text-indigo-100 bg-white/10 px-2 py-0.5 rounded-full">Coming Soon</p>
+                                            <Gift className="h-4 w-4 text-white/70 animate-pulse" />
+                                        </div>
+                                        <h4 className="text-base font-bold mb-1 leading-tight">City Clean-up Drive</h4>
+                                        <p className="text-xs text-indigo-100 mb-3 opacity-90">Join 500+ volunteers this Sunday!</p>
+                                        <Button
+                                            size="sm"
+                                            variant="secondary"
+                                            className="w-full h-9 text-xs font-bold bg-white text-indigo-600 hover:bg-white/90 border-none shadow-sm transition-transform active:scale-95"
+                                            onClick={() => onItemClick('events')}
+                                        >
+                                            Register Now
+                                        </Button>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    )}
+                        )}
+                    </div>
 
                     {/* Bottom Items */}
                     <div className="p-4 mt-auto border-t border-border/50 bg-white/50 backdrop-blur-sm dark:bg-slate-900/50">

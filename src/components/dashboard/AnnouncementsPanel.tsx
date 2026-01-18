@@ -1,4 +1,5 @@
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Megaphone } from "lucide-react";
 import gsap from "gsap";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
@@ -14,25 +15,13 @@ interface Announcement {
 }
 
 export function AnnouncementsPanel() {
-    const [announcements, setAnnouncements] = useState<Announcement[]>([]);
-    const [loading, setLoading] = useState(true);
     const containerRef = useRef<HTMLDivElement>(null);
+    const { data: announcements = [], isLoading: loading } = useQuery<Announcement[]>({
+        queryKey: ['announcements'],
+        queryFn: () => db.getAnnouncements(),
+    });
 
-    useEffect(() => {
-        const fetchAnnouncements = async () => {
-            try {
-                const data = await db.getAnnouncements();
-                setAnnouncements(data || []);
-            } catch (err) {
-                console.error("Failed to fetch announcements", err);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchAnnouncements();
-    }, []);
-
+    // Animation hook depends on data loading
     useEffect(() => {
         if (!loading && containerRef.current) {
             gsap.fromTo(containerRef.current.children,
@@ -41,10 +30,6 @@ export function AnnouncementsPanel() {
             );
         }
     }, [loading, announcements]);
-
-    if (!loading && announcements.length === 0) {
-        return null; // Don't show if empty
-    }
 
     return (
         <Card className="border-none shadow-sm bg-indigo-50 dark:bg-slate-900/50 mb-6">
@@ -64,6 +49,12 @@ export function AnnouncementsPanel() {
                     <div className="space-y-2">
                         <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded animate-pulse w-3/4" />
                         <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded animate-pulse w-1/2" />
+                    </div>
+                ) : announcements.length === 0 ? (
+                    <div className="p-6 text-center border border-dashed border-slate-200 dark:border-slate-700 rounded-xl bg-white/50 dark:bg-slate-800/50">
+                        <Megaphone className="h-8 w-8 mx-auto text-slate-300 mb-2" />
+                        <p className="text-sm font-medium text-slate-500">No official announcements yet.</p>
+                        <p className="text-xs text-slate-400">Stay tuned for city updates.</p>
                     </div>
                 ) : (
                     <div ref={containerRef} className="space-y-3">

@@ -20,34 +20,45 @@ import { LiveLocationStreamer } from "@/components/sos/LiveLocationStreamer";
 export function Index() {
     const [mode, setMode] = useState<AppMode>('community');
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-    const [activeItem, setActiveItem] = useState("dashboard");
     const [sosActive, setSosActive] = useState(false);
 
     // URL based navigation
     const location = useLocation();
     const navigate = useNavigate();
-    useEffect(() => {
-        const path = location.pathname.endsWith('/') && location.pathname.length > 1
-            ? location.pathname.slice(0, -1)
-            : location.pathname;
 
-        if (path === '/complaints') setActiveItem('complaints');
-        else if (path === '/rewards') setActiveItem('rewards');
-        else if (path === '/profile') setActiveItem('profile');
-        else if (path === '/settings') setActiveItem('settings');
-        else if (path === '/events') setActiveItem('events');
-        else if (path === '/missing') setActiveItem('missing');
-        else if (path === '/helpline') setActiveItem('helpline');
-        else if (path === '/preparedness') setActiveItem('preparedness');
-        else if (path === '/emergency') {
+    // Derived State for Active Item
+    const getActiveItem = (pathname: string) => {
+        const path = pathname.endsWith('/') && pathname.length > 1
+            ? pathname.slice(0, -1)
+            : pathname;
+
+        if (path === '/complaints') return 'complaints';
+        if (path === '/incidents') return 'incidents';
+        if (path === '/rewards') return 'rewards';
+        if (path === '/profile') return 'profile';
+        if (path === '/settings') return 'settings';
+        if (path === '/events') return 'events';
+        if (path === '/missing') return 'missing';
+        if (path === '/helpline') return 'helpline';
+        if (path === '/preparedness') return 'preparedness';
+        if (path === '/emergency') return 'command';
+        if (path === '/') return 'dashboard';
+        return 'dashboard';
+    };
+
+    const activeItem = getActiveItem(location.pathname);
+
+    // Mode syncing
+    useEffect(() => {
+        if (location.pathname === '/emergency') {
             setMode('emergency');
-            setActiveItem('command');
+        } else if (location.pathname === '/' || mode === 'emergency') {
+            // Only switch back to community if we left emergency route and were in emergency mode
+            if (location.pathname !== '/emergency') {
+                setMode('community');
+            }
         }
-        else if (path === '/') {
-            setMode('community');
-            setActiveItem('dashboard');
-        }
-    }, [location.pathname]);
+    }, [location.pathname, mode]);
 
     // Listen for SOS toggle events from anywhere
     useEffect(() => {

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Plus, Filter, Flame, MapPin, Clock, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
@@ -20,6 +20,12 @@ export function Complaints() {
     const [userLoc, setUserLoc] = useState<{ lat: number, lng: number } | undefined>(undefined);
     const [error, setError] = useState<string | null>(null);
 
+    const isMounted = React.useRef(true);
+
+    useEffect(() => {
+        return () => { isMounted.current = false; };
+    }, []);
+
     const fetchData = async () => {
         setIsLoading(true);
         setError(null);
@@ -29,6 +35,8 @@ export function Complaints() {
                 userLoc?.lat,
                 userLoc?.lng
             );
+
+            if (!isMounted.current) return;
 
             // Transform data to match Complaint interface
             const transformed: Complaint[] = data.map((item: any) => ({
@@ -57,12 +65,17 @@ export function Complaints() {
 
             setComplaints(transformed);
         } catch (error: any) {
+            if (error.name === 'AbortError') return;
             console.error(error);
-            const msg = error.message || "Failed to load complaints";
-            setError(msg);
-            toast.error(msg);
+            if (isMounted.current) {
+                const msg = error.message || "Failed to load complaints";
+                setError(msg);
+                toast.error(msg);
+            }
         } finally {
-            setIsLoading(false);
+            if (isMounted.current) {
+                setIsLoading(false);
+            }
         }
     };
 

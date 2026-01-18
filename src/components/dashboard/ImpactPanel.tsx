@@ -13,6 +13,7 @@ import { RankBadge, type Rank } from "./RankBadge";
 import { StatCounter } from "./StatCounter";
 import { AchievementBadge } from "./AchievementBadge";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import type { Profile } from "@/contexts/AuthContext";
 import { useState, useEffect } from "react";
@@ -113,14 +114,20 @@ export function ImpactPanel({ profile }: ImpactPanelProps) {
                     </div>
 
                     {/* Text Info - Moved to side on Mobile, Bottom on Desktop */}
-                    <div className="text-left md:text-center flex-1">
-                        <h3 className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-600 dark:from-white dark:to-slate-400 mb-1">
-                            {rankInfo.current} Citizen
+                    <div className="text-left md:text-center flex-1 flex flex-col items-start md:items-center">
+                        <h3 className="text-xl font-black bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-600 dark:from-white dark:to-slate-400 mb-1">
+                            {rankInfo.current} Guardian
                         </h3>
-                        <p className="text-xs text-slate-500 leading-relaxed">
-                            {rankInfo.max - stats.points} XP left to reach level <span className="font-bold text-slate-700 dark:text-slate-300">{rankInfo.next}</span>.
-                            Keep contributing!
+                        <p className="text-xs text-slate-500 leading-relaxed max-w-[180px] md:max-w-none mb-4">
+                            You are <span className="font-bold text-slate-900 dark:text-white">{rankInfo.max - stats.points} XP</span> away from unlocking <span className="font-bold text-indigo-600 dark:text-indigo-400">{rankInfo.next}</span> level.
                         </p>
+
+                        <Button
+                            className="bg-slate-900 hover:bg-slate-800 text-white rounded-xl h-9 text-xs font-bold shadow-lg shadow-slate-900/20 active:scale-95 transition-all"
+                            onClick={() => navigate('/incidents')}
+                        >
+                            Report Issue +50 XP
+                        </Button>
                     </div>
                 </div>
 

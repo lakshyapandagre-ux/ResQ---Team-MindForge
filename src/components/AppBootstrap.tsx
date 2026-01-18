@@ -48,6 +48,19 @@ export function AppBootstrap({ children }: AppBootstrapProps) {
                     <div className="h-2 w-2 bg-teal-500 rounded-full animate-bounce [animation-delay:-0.15s]" />
                     <div className="h-2 w-2 bg-teal-500 rounded-full animate-bounce" />
                 </div>
+
+                {showFallback && (
+                    <button
+                        onClick={() => {
+                            localStorage.clear();
+                            sessionStorage.clear();
+                            window.location.reload();
+                        }}
+                        className="mt-8 text-xs text-red-500 hover:text-red-600 underline cursor-pointer"
+                    >
+                        Stuck? Reset App Data
+                    </button>
+                )}
             </div>
         );
     }
