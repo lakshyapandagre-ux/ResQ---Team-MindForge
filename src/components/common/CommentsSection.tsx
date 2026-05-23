@@ -19,9 +19,10 @@ interface Comment {
 interface CommentsSectionProps {
     parentId: string;
     parentType: 'complaint' | 'missing_report';
+    onCommentAdded?: () => void;
 }
 
-export function CommentsSection({ parentId, parentType }: CommentsSectionProps) {
+export function CommentsSection({ parentId, parentType, onCommentAdded }: CommentsSectionProps) {
     const { user } = useAuth();
     const [comments, setComments] = useState<Comment[]>([]);
     const [newMessage, setNewMessage] = useState("");
@@ -31,7 +32,12 @@ export function CommentsSection({ parentId, parentType }: CommentsSectionProps) 
 
     const fetchComments = useCallback(async () => {
         try {
-            const data = await db.getComments(parentId);
+            let data;
+            if (parentType === 'complaint') {
+                data = await db.getComplaintComments(parentId);
+            } else {
+                data = await db.getComments(parentId);
+            }
             setComments(data);
             setLoading(false);
             // Scroll to bottom on initial load
@@ -42,19 +48,22 @@ export function CommentsSection({ parentId, parentType }: CommentsSectionProps) 
             console.error("Failed to load comments", error);
             setLoading(false);
         }
-    }, [parentId]);
+    }, [parentId, parentType]);
 
     useEffect(() => {
         fetchComments();
 
         // Realtime subscription
+        const table = parentType === 'complaint' ? 'complaint_comments' : 'u_comments';
+        const filter = parentType === 'complaint' ? `complaint_id=eq.${parentId}` : `parent_id=eq.${parentId}`;
+
         const channel = supabase
             .channel(`comments-${parentId}`)
             .on('postgres_changes', {
                 event: 'INSERT',
                 schema: 'public',
-                table: 'u_comments',
-                filter: `parent_id=eq.${parentId}`
+                table: table,
+                filter: filter
             }, () => {
                 fetchComments();
             })
@@ -63,7 +72,7 @@ export function CommentsSection({ parentId, parentType }: CommentsSectionProps) 
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [parentId, fetchComments]);
+    }, [parentId, parentType, fetchComments]);
 
     const handleSend = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -71,16 +80,35 @@ export function CommentsSection({ parentId, parentType }: CommentsSectionProps) 
 
         setSending(true);
         try {
-            await db.createComment({
-                user_id: user.id,
-                parent_id: parentId,
-                parent_type: parentType,
-                message: newMessage.trim()
-            });
-            setNewMessage("");
+            if (parentType === 'complaint') {
+                // Optimistic Update
+                const newCommentOptimistic: Comment = {
+                    id: `temp-${Date.now()}`,
+                    message: newMessage.trim(),
+                    created_at: new Date().toISOString(),
+                    author_name: user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Me'
+                };
+                setComments(prev => [...prev, newCommentOptimistic]);
+                setNewMessage("");
+
+                await db.createComplaintComment({
+                    user_id: user.id,
+                    complaint_id: parentId,
+                    comment: newMessage.trim()
+                });
+            } else {
+                await db.createComment({
+                    user_id: user.id,
+                    parent_id: parentId,
+                    parent_type: parentType,
+                    message: newMessage.trim()
+                });
+            }
             // Fetch will be triggered by subscription, but we can optimistically add or wait
+            if (onCommentAdded) onCommentAdded();
         } catch (error) {
             toast.error("Failed to post comment");
+            // Revert optimistic update if needed? (Fetching will correct it anyway)
         } finally {
             setSending(false);
         }

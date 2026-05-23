@@ -23,8 +23,13 @@ export interface Complaint {
         supports: number;
         comments: number;
         shares: number;
-        // comments: number; // Removed duplicate if present
     };
     isSupported: boolean;
     isFollowed: boolean;
+    // New fields
+    supports_count?: number;
+    reposts_count?: number;
+    comments_count?: number;
+    user_has_supported?: boolean;
+    user_has_reposted?: boolean;
 }

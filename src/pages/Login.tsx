@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,7 @@ export function Login() {
     const navigate = useNavigate();
     const { user, profile, loading: authLoading, signIn } = useAuth();
     const [loading, setLoading] = useState(false);
+    const isSubmittingRef = useRef(false);
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
 
@@ -24,6 +25,9 @@ export function Login() {
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
+        
+        if (isSubmittingRef.current || loading) return;
+        isSubmittingRef.current = true;
         setLoading(true);
 
         try {
@@ -42,6 +46,9 @@ export function Login() {
             }
         } finally {
             setLoading(false);
+            setTimeout(() => {
+                isSubmittingRef.current = false;
+            }, 1000);
         }
     };
 

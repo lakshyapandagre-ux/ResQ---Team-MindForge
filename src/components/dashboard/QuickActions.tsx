@@ -10,30 +10,44 @@ function QuickActionItem({
     icon: Icon,
     title,
     subtitle,
-    color,
-    bg,
+    gradient,
+    hoverGradient,
     onClick
 }: {
-    icon: any,
-    title: string,
-    subtitle: string,
-    color: string,
-    bg: string,
-    onClick: () => void
+    icon: any;
+    title: string;
+    subtitle: string;
+    gradient: string;
+    hoverGradient: string;
+    onClick: () => void;
 }) {
     return (
         <button
             onClick={onClick}
-            className="group flex h-full w-full flex-col items-start rounded-[2rem] bg-white p-4 md:p-5 text-left shadow-sm transition-all hover:translate-y-[-2px] hover:shadow-md dark:bg-slate-900 border border-slate-100 dark:border-slate-800 relative overflow-hidden"
+            className="group flex h-full w-full flex-col items-start glass-card p-5 text-left relative overflow-hidden hover:-translate-y-1.5 hover:shadow-xl transition-all duration-300"
         >
-            <div className={cn("mb-4 flex h-12 w-12 items-center justify-center rounded-full transition-colors relative z-10", bg)}>
-                <Icon className={cn("h-6 w-6 transition-transform group-hover:scale-110", color)} />
+            {/* Gradient icon container */}
+            <div className={cn(
+                "mb-4 flex h-14 w-14 items-center justify-center rounded-2xl text-white shadow-lg transition-all duration-300 group-hover:scale-110 group-hover:rotate-3",
+                gradient
+            )}>
+                <Icon className="h-7 w-7" />
             </div>
-            <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 relative z-10">{title}</h3>
-            <p className="text-sm text-slate-400 dark:text-slate-500 relative z-10">{subtitle}</p>
 
-            {/* Subtle decorative circle */}
-            <div className={cn("absolute -bottom-4 -right-4 w-20 h-20 rounded-full opacity-10 transition-transform group-hover:scale-150", color.replace('text-', 'bg-'))} />
+            <h3 className="text-lg font-extrabold text-slate-800 dark:text-slate-100 relative z-10 mb-1">{title}</h3>
+            <p className="text-sm text-slate-400 dark:text-slate-500 relative z-10 font-medium">{subtitle}</p>
+
+            {/* Hover gradient reveal */}
+            <div className={cn(
+                "absolute inset-0 opacity-0 group-hover:opacity-[0.04] transition-opacity duration-300 rounded-[20px]",
+                hoverGradient
+            )} />
+
+            {/* Decorative corner gradient */}
+            <div className={cn(
+                "absolute -bottom-6 -right-6 w-24 h-24 rounded-full opacity-10 transition-all duration-300 group-hover:scale-150 group-hover:opacity-20 blur-xl",
+                gradient
+            )} />
         </button>
     );
 }
@@ -46,38 +60,38 @@ export function QuickActions() {
 
     return (
         <div>
-            <h3 className="mb-4 text-xs font-bold uppercase tracking-widest text-slate-400 pl-1">Quick Actions</h3>
+            <h3 className="mb-4 text-xs font-extrabold uppercase tracking-widest text-slate-400 pl-1">Quick Actions</h3>
             <div className="grid grid-cols-2 gap-4">
                 <QuickActionItem
                     icon={AlertTriangle}
                     title="Hazards"
                     subtitle="Report issue"
-                    color="text-red-500"
-                    bg="bg-red-50"
+                    gradient="gradient-icon-red"
+                    hoverGradient="bg-gradient-to-br from-red-500 to-red-600"
                     onClick={() => navigate('/complaints')}
                 />
                 <QuickActionItem
                     icon={Asterisk}
                     title="Emergency"
                     subtitle="SOS Alert"
-                    color="text-orange-500"
-                    bg="bg-orange-50"
+                    gradient="gradient-icon-orange"
+                    hoverGradient="bg-gradient-to-br from-orange-500 to-amber-500"
                     onClick={() => setSosOpen(true)}
                 />
                 <QuickActionItem
                     icon={Briefcase}
                     title="Services"
                     subtitle="Request"
-                    color="text-teal-600"
-                    bg="bg-teal-50"
+                    gradient="gradient-icon-teal"
+                    hoverGradient="bg-gradient-to-br from-teal-500 to-emerald-500"
                     onClick={() => setServicesOpen(true)}
                 />
                 <QuickActionItem
                     icon={Calendar}
                     title="Facilities"
                     subtitle="Booking"
-                    color="text-blue-500"
-                    bg="bg-blue-50"
+                    gradient="gradient-icon-blue"
+                    hoverGradient="bg-gradient-to-br from-blue-500 to-indigo-500"
                     onClick={() => setFacilitiesOpen(true)}
                 />
             </div>

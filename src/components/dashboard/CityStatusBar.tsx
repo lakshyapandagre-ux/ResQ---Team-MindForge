@@ -1,17 +1,73 @@
-
-import { useState, useEffect } from "react";
-import { ShieldCheck, AlertCircle, Siren, Timer, Activity } from "lucide-react";
-import { StatusMetricCard } from "./StatusMetricCard";
-import { StatCardSkeleton } from "@/components/skeletons/StatCardSkeleton";
+import { useState, useEffect, useRef } from "react";
+import { ShieldCheck, AlertCircle, Siren, Activity } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import useEmblaCarousel from "embla-carousel-react";
 import { cn } from "@/lib/utils";
 
 interface CityStats {
     safeZones: number;
     activeIssues: number;
     emergencies: number;
-    avgResponseMin: number;
+}
+
+function AnimatedNumber({ value, suffix = "" }: { value: number; suffix?: string }) {
+    const [display, setDisplay] = useState(0);
+    const ref = useRef<HTMLSpanElement>(null);
+
+    useEffect(() => {
+        let start = 0;
+        const end = value;
+        if (end === 0) { setDisplay(0); return; }
+
+        const duration = 1200;
+        const increment = end / (duration / 16);
+        const timer = setInterval(() => {
+            start += increment;
+            if (start >= end) {
+                setDisplay(end);
+                clearInterval(timer);
+            } else {
+                setDisplay(Math.round(start));
+            }
+        }, 16);
+
+        return () => clearInterval(timer);
+    }, [value]);
+
+    return <span ref={ref} className="count-animate">{display}{suffix}</span>;
+}
+
+function MetricCard({ icon: Icon, value, label, subLabel, suffix, glowClass, dotColor, iconBg }: {
+    icon: any; value: number; label: string; subLabel: string;
+    suffix?: string; glowClass: string; dotColor: string; iconBg: string;
+}) {
+    return (
+        <div className={cn("glass-card p-5 relative overflow-hidden group hover:-translate-y-1.5 transition-all duration-300", glowClass)}>
+            {/* Decorative glow blob */}
+            <div className={cn("absolute -top-6 -right-6 w-24 h-24 rounded-full blur-2xl opacity-20 pointer-events-none group-hover:opacity-30 transition-opacity", iconBg)} />
+
+            <div className="flex items-start justify-between mb-4 relative z-10">
+                <div className={cn("p-2.5 rounded-xl text-white shadow-lg", iconBg)}>
+                    <Icon className="h-5 w-5" />
+                </div>
+                {/* Live Pulse Dot */}
+                <div className="flex items-center gap-1.5">
+                    <span className="relative flex h-2.5 w-2.5">
+                        <span className={cn("animate-ping absolute inline-flex h-full w-full rounded-full opacity-75", dotColor)} />
+                        <span className={cn("relative inline-flex rounded-full h-2.5 w-2.5", dotColor)} />
+                    </span>
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Live</span>
+                </div>
+            </div>
+
+            <div className="relative z-10">
+                <p className="text-3xl font-black text-slate-800 dark:text-white mb-1">
+                    <AnimatedNumber value={value} suffix={suffix} />
+                </p>
+                <p className="text-sm font-bold text-slate-600 dark:text-slate-300">{label}</p>
+                <p className="text-xs text-slate-400 font-medium mt-0.5">{subLabel}</p>
+            </div>
+        </div>
+    );
 }
 
 export function CityStatusBar() {
@@ -19,29 +75,16 @@ export function CityStatusBar() {
         safeZones: 98,
         activeIssues: 0,
         emergencies: 0,
-        avgResponseMin: 12
     });
-
     const [loading, setLoading] = useState(true);
-
-    // Embla Carousel Hook
-    const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true });
-    const [selectedIndex, setSelectedIndex] = useState(0);
-
-    useEffect(() => {
-        if (!emblaApi) return;
-        emblaApi.on("select", () => setSelectedIndex(emblaApi.selectedScrollSnap()));
-    }, [emblaApi]);
 
     useEffect(() => {
         const fetchStats = async () => {
-            // 1. Active Issues
             const { count: issueCount } = await supabase
                 .from('complaints')
                 .select('*', { count: 'exact', head: true })
                 .neq('status', 'Resolved');
 
-            // 2. Active Emergencies
             const { count: emergencyCount } = await supabase
                 .from('emergencies')
                 .select('*', { count: 'exact', head: true })
@@ -51,7 +94,6 @@ export function CityStatusBar() {
                 ...prev,
                 activeIssues: issueCount || 0,
                 emergencies: emergencyCount || 0,
-                // Simple calculation for safe zones based on issues
                 safeZones: Math.max(80, 100 - ((issueCount || 0) * 0.5)),
             }));
             setLoading(false);
@@ -59,142 +101,65 @@ export function CityStatusBar() {
 
         fetchStats();
 
-        // Realtime Subscription
         const channel = supabase
             .channel('city-stats')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'complaints' }, () => fetchStats())
             .on('postgres_changes', { event: '*', schema: 'public', table: 'emergencies' }, () => fetchStats())
             .subscribe();
 
-        return () => {
-            supabase.removeChannel(channel);
-        };
+        return () => { supabase.removeChannel(channel); };
     }, []);
 
-    const slides = [
-        {
-            id: 'safe-zones',
-            component: (
-                <StatusMetricCard
+    if (loading) {
+        return (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {[1, 2, 3].map(i => (
+                    <div key={i} className="glass-card p-5 h-[140px] animate-pulse">
+                        <div className="w-10 h-10 bg-slate-200 dark:bg-slate-700 rounded-xl mb-4" />
+                        <div className="h-8 w-16 bg-slate-200 dark:bg-slate-700 rounded mb-2" />
+                        <div className="h-4 w-24 bg-slate-100 dark:bg-slate-800 rounded" />
+                    </div>
+                ))}
+            </div>
+        );
+    }
+
+    return (
+        <div className="space-y-3">
+            <div className="flex items-center gap-2 px-1">
+                <Activity className="h-4 w-4 text-blue-500" />
+                <span className="text-xs font-extrabold uppercase tracking-widest text-slate-500">Live Status</span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <MetricCard
                     icon={ShieldCheck}
-                    value={stats.safeZones}
+                    value={Math.round(stats.safeZones)}
                     label="Safety Score"
-                    subLabel="City-wide"
+                    subLabel="City-wide index"
                     suffix="%"
-                    color="text-emerald-400"
-                    bgColor="bg-emerald-400/20"
+                    glowClass="glass-glow-green"
+                    dotColor="bg-emerald-500"
+                    iconBg="gradient-icon-green"
                 />
-            )
-        },
-        {
-            id: 'issues',
-            component: (
-                <StatusMetricCard
+                <MetricCard
                     icon={AlertCircle}
                     value={stats.activeIssues}
                     label="Active Issues"
-                    subLabel="Being Resolved"
-                    color="text-amber-400"
-                    bgColor="bg-amber-400/20"
+                    subLabel="Being resolved"
+                    glowClass="glass-glow-blue"
+                    dotColor="bg-blue-500"
+                    iconBg="gradient-icon-blue"
                 />
-            )
-        },
-        {
-            id: 'emergency',
-            component: (
-                <StatusMetricCard
+                <MetricCard
                     icon={Siren}
                     value={stats.emergencies}
                     label="Emergencies"
-                    subLabel={stats.emergencies > 0 ? "Action Required" : "All Clear"}
-                    isCritical={stats.emergencies > 0}
-                    color={stats.emergencies > 0 ? "text-red-500" : "text-green-400"}
-                    bgColor={stats.emergencies > 0 ? "bg-red-500/20" : "bg-green-400/20"}
+                    subLabel={stats.emergencies > 0 ? "Action required" : "All clear"}
+                    glowClass={stats.emergencies > 0 ? "glass-glow-red" : "glass-glow-green"}
+                    dotColor={stats.emergencies > 0 ? "bg-red-500" : "bg-emerald-500"}
+                    iconBg={stats.emergencies > 0 ? "gradient-icon-red" : "gradient-icon-green"}
                 />
-            )
-        },
-        {
-            id: 'response',
-            component: (
-                <StatusMetricCard
-                    icon={Timer}
-                    value={stats.avgResponseMin}
-                    label="Avg Response"
-                    subLabel="Minutes"
-                    suffix="m"
-                    color="text-cyan-400"
-                    bgColor="bg-cyan-400/20"
-                />
-            )
-        }
-    ];
-
-    return (
-        <div className="relative w-full overflow-hidden rounded-[2.5rem] shadow-xl group md:min-h-[220px] transition-all duration-500 hover:shadow-2xl">
-            {/* Lively Background */}
-            <div className="absolute inset-0 z-0">
-                <img
-                    src="https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=800&auto=format&fit=crop&q=80"
-                    alt="City Skyline"
-                    className="h-full w-full object-cover transition-transform duration-[30s] ease-linear scale-100 group-hover:scale-110"
-                />
-
-                {/* Dynamic Gradient Overlay */}
-                <div className={cn(
-                    "absolute inset-0 transition-colors duration-1000 mix-blend-multiply",
-                    stats.emergencies > 0
-                        ? "bg-gradient-to-r from-red-900/90 to-slate-900/80"
-                        : "bg-gradient-to-r from-teal-900/95 via-emerald-900/80 to-slate-900/50"
-                )} />
-                <div className="absolute inset-0 bg-black/10" />
-            </div>
-
-            {/* Content Container */}
-            <div className="relative z-10 px-6 py-6 flex flex-col justify-center h-full">
-
-                {/* Header Row */}
-                <div className="mb-4 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        <span className="relative flex h-3 w-3">
-                            <span className={cn("animate-ping absolute inline-flex h-full w-full rounded-full opacity-75", stats.emergencies > 0 ? 'bg-red-400' : 'bg-emerald-400')}></span>
-                            <span className={cn("relative inline-flex rounded-full h-3 w-3", stats.emergencies > 0 ? 'bg-red-500' : 'bg-emerald-500')}></span>
-                        </span>
-                        <span className="text-xs font-extrabold uppercase tracking-widest text-white/90 drop-shadow-sm">
-                            Live Status
-                        </span>
-                    </div>
-
-                    {/* Pagination Dots */}
-                    <div className="flex gap-1.5">
-                        {slides.map((_, idx) => (
-                            <div
-                                key={idx}
-                                className={cn(
-                                    "h-1.5 rounded-full transition-all duration-300 shadow-sm",
-                                    idx === selectedIndex ? "w-4 bg-white" : "w-1.5 bg-white/30"
-                                )}
-                            />
-                        ))}
-                    </div>
-                </div>
-
-                {/* Carousel */}
-                <div className="overflow-hidden" ref={emblaRef}>
-                    <div className="flex -ml-4">
-                        {slides.map((slide) => (
-                            <div key={slide.id} className="min-w-0 flex-[0_0_100%] sm:flex-[0_0_50%] md:flex-[0_0_33.33%] pl-4">
-                                <div className="h-full transform transition-all duration-300 hover:-translate-y-1">
-                                    {loading ? <StatCardSkeleton /> : slide.component}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-
-                <div className="mt-4 text-[10px] text-white/60 font-medium text-center md:text-left flex items-center gap-1.5">
-                    <Activity className="h-3 w-3" />
-                    Updates automatically in real-time
-                </div>
             </div>
         </div>
     );

@@ -18,11 +18,13 @@ import {
 import { cn } from "@/lib/utils";
 import type { Complaint } from "./types";
 import { toast } from "sonner";
+import { RepostButton } from "./RepostButton";
 import { SupportButton } from "./SupportButton";
 import { ShareMenu } from "./ShareMenu";
 import { CommentDrawer } from "./CommentDrawer";
 import { db } from "@/lib/db";
 import { supabase } from "@/lib/supabase";
+import { useNetworkStatus } from "@/hooks/use-network-status";
 
 interface PostCardProps {
     complaint: Complaint;
@@ -30,10 +32,19 @@ interface PostCardProps {
 
 export function PostCard({ complaint }: PostCardProps) {
     const [currentImage, setCurrentImage] = useState(0);
-    const [isSupported, setIsSupported] = useState(complaint.isSupported);
-    const [supportCount, setSupportCount] = useState(complaint.stats.supports);
+    const [isSupported, setIsSupported] = useState(complaint.user_has_supported || false);
+    const [supportCount, setSupportCount] = useState(complaint.supports_count || 0);
+
+    const [isReposted, setIsReposted] = useState(complaint.user_has_reposted || false);
+    const [repostCount, setRepostCount] = useState(complaint.reposts_count || 0);
+
+    const [commentCount, setCommentCount] = useState(complaint.comments_count || 0);
+
     const [isFollowed, setIsFollowed] = useState(complaint.isFollowed);
     const [actionLoading, setActionLoading] = useState(false);
+    const { isOnline, saveData, effectiveType } = useNetworkStatus();
+    const isLowBandwidth = saveData || effectiveType === '2g' || effectiveType === 'slow-2g';
+    const [loadImagesAnyway, setLoadImagesAnyway] = useState(false);
 
     const handleSupport = async () => {
         const { data: { user } } = await supabase.auth.getUser();
@@ -42,25 +53,48 @@ export function PostCard({ complaint }: PostCardProps) {
             return;
         }
 
-        // Optimistic Update
         const previousState = isSupported;
         const previousCount = supportCount;
 
         setIsSupported(!isSupported);
-        setSupportCount(prev => isSupported ? prev - 1 : prev + 1);
+        setSupportCount((prev: number) => isSupported ? prev - 1 : prev + 1);
 
         try {
             setActionLoading(true);
             const added = await db.toggleSupport(complaint.id, user.id);
-            if (added !== !previousState) {
-                // Determine if we need to correct state (shouldn't happen if logic matches)
-            }
-            toast.success(added ? "Supported Issue" : "Removed Support");
+            if (added) toast.success("Supported Issue");
+            else toast.info("Removed Support");
         } catch (error) {
-            // Revert on error
             setIsSupported(previousState);
             setSupportCount(previousCount);
             toast.error("Failed to update support");
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    const handleRepost = async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+            toast.error("Please login to repost");
+            return;
+        }
+
+        const previousState = isReposted;
+        const previousCount = repostCount;
+
+        setIsReposted(!isReposted);
+        setRepostCount((prev: number) => isReposted ? prev - 1 : prev + 1);
+
+        try {
+            setActionLoading(true);
+            const added = await db.toggleRepost(complaint.id, user.id);
+            if (added) toast.success("Reposted to your feed");
+            else toast.info("Removed repost");
+        } catch (error) {
+            setIsReposted(previousState);
+            setRepostCount(previousCount);
+            toast.error("Failed to repost");
         } finally {
             setActionLoading(false);
         }
@@ -137,41 +171,53 @@ export function PostCard({ complaint }: PostCardProps) {
             {/* Image Carousel */}
             {complaint.images && complaint.images.length > 0 ? (
                 <div className="relative aspect-video bg-slate-100">
-                    <img
-                        src={complaint.images[currentImage]}
-                        alt={complaint.title}
-                        className="w-full h-full object-cover transition-transform duration-700 hover:scale-105"
-                    />
-
-                    {complaint.images.length > 1 && (
+                    {isLowBandwidth && !loadImagesAnyway ? (
+                        <div className="w-full h-full flex flex-col items-center justify-center bg-slate-200 text-slate-500 gap-2">
+                            <span className="text-xs font-medium">Image hidden (Low Data Mode)</span>
+                            <Button variant="outline" size="sm" onClick={() => setLoadImagesAnyway(true)}>
+                                Load Image
+                            </Button>
+                        </div>
+                    ) : (
                         <>
-                            <button
-                                onClick={prevImage}
-                                className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white p-1.5 rounded-full backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-all"
-                            >
-                                <ChevronLeft className="h-5 w-5" />
-                            </button>
-                            <button
-                                onClick={nextImage}
-                                className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white p-1.5 rounded-full backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-all"
-                            >
-                                <ChevronRight className="h-5 w-5" />
-                            </button>
-                            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5">
-                                {complaint.images.map((_, idx) => (
-                                    <div
-                                        key={idx}
-                                        className={cn(
-                                            "h-1.5 rounded-full transition-all shadow-sm",
-                                            idx === currentImage ? "w-4 bg-white" : "w-1.5 bg-white/50"
-                                        )}
-                                    />
-                                ))}
-                            </div>
+                            <img
+                                src={complaint.images[currentImage]}
+                                alt={complaint.title}
+                                loading="lazy"
+                                className="w-full h-full object-cover transition-transform duration-700 hover:scale-105"
+                            />
+                            {/* Navigation Buttons */}
+                            {complaint.images.length > 1 && (
+                                <>
+                                    <button
+                                        onClick={prevImage}
+                                        className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white p-1.5 rounded-full backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-all"
+                                    >
+                                        <ChevronLeft className="h-5 w-5" />
+                                    </button>
+                                    <button
+                                        onClick={nextImage}
+                                        className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white p-1.5 rounded-full backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-all"
+                                    >
+                                        <ChevronRight className="h-5 w-5" />
+                                    </button>
+                                    <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5">
+                                        {complaint.images.map((_, idx) => (
+                                            <div
+                                                key={idx}
+                                                className={cn(
+                                                    "h-1.5 rounded-full transition-all shadow-sm",
+                                                    idx === currentImage ? "w-4 bg-white" : "w-1.5 bg-white/50"
+                                                )}
+                                            />
+                                        ))}
+                                    </div>
+                                </>
+                            )}
                         </>
                     )}
 
-                    <div className="absolute top-3 left-3 flex gap-2">
+                    <div className="absolute top-3 left-3 flex gap-2 pointer-events-none">
                         <Badge className={cn("border shadow-sm backdrop-blur-md uppercas", statusColors[complaint.status.toLowerCase()] || statusColors['pending'])}>
                             {complaint.status}
                         </Badge>
@@ -254,15 +300,27 @@ export function PostCard({ complaint }: PostCardProps) {
             </CardContent>
 
             {/* Actions */}
-            <CardFooter className="p-2 border-t bg-slate-50/50 grid grid-cols-3 gap-1">
+            <CardFooter className="p-2 border-t bg-slate-50/50 grid grid-cols-4 gap-1">
                 <SupportButton
                     isSupported={isSupported}
                     count={supportCount}
                     onClick={handleSupport}
-                    isLoading={actionLoading}
+                    isLoading={actionLoading || !isOnline}
                 />
 
-                <CommentDrawer complaintId={complaint.id} commentCount={complaint.stats.comments} />
+                <RepostButton
+                    isReposted={isReposted}
+                    count={repostCount}
+                    onClick={handleRepost}
+                    isLoading={actionLoading || !isOnline}
+                />
+
+                <CommentDrawer
+                    complaintId={complaint.id}
+                    commentCount={commentCount}
+                    disabled={!isOnline}
+                    onCommentAdded={() => setCommentCount((prev: number) => prev + 1)}
+                />
 
                 <ShareMenu complaintId={complaint.id} title={complaint.title} />
             </CardFooter>

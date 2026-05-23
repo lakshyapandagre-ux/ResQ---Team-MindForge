@@ -20,6 +20,9 @@ import {
 import { ArrowLeft, MapPin, Award, Edit2, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { MyComplaintsList } from "@/components/profile/MyComplaintsList";
+import { MyRepostsList } from "@/components/profile/MyRepostsList";
 
 export default function ProfilePage() {
     const { profile, refreshProfile, loading } = useAuth();
@@ -150,30 +153,32 @@ export default function ProfilePage() {
                     </CardHeader>
                 </Card>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full">
-                    {/* Stats Cards */}
-                    <Card className="hover:shadow-md transition-shadow">
-                        <CardContent className="pt-6 text-center">
-                            <div className="text-3xl font-bold text-indigo-600 mb-1">{profile.reports_count}</div>
-                            <p className="text-sm font-medium text-slate-600">Reports Submitted</p>
-                        </CardContent>
-                    </Card>
-                    <Card className="hover:shadow-md transition-shadow">
-                        <CardContent className="pt-6 text-center">
-                            <div className="text-3xl font-bold text-green-600 mb-1">{profile.resolved_count}</div>
-                            <p className="text-sm font-medium text-slate-600">Issues Resolved</p>
-                        </CardContent>
-                    </Card>
-                    <Card className="hover:shadow-md transition-shadow bg-gradient-to-br from-orange-50 to-amber-50 border-orange-100">
-                        <CardContent className="pt-6 text-center flex flex-col items-center">
-                            <div className="flex items-center gap-2 text-3xl font-bold text-orange-500 mb-1">
-                                <Award className="h-6 w-6" /> {profile.points}
-                            </div>
-                            <p className="text-sm font-medium text-slate-600">Impact Points</p>
-                        </CardContent>
-                    </Card>
+                <div className="flex-1 min-w-0 space-y-6">
+                    {/* Stats Row */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <Card className="hover:shadow-md transition-shadow">
+                            <CardContent className="pt-6 text-center">
+                                <div className="text-3xl font-bold text-indigo-600 mb-1">{profile.reports_count}</div>
+                                <p className="text-sm font-medium text-slate-600">Reports Submitted</p>
+                            </CardContent>
+                        </Card>
+                        <Card className="hover:shadow-md transition-shadow">
+                            <CardContent className="pt-6 text-center">
+                                <div className="text-3xl font-bold text-green-600 mb-1">{profile.resolved_count}</div>
+                                <p className="text-sm font-medium text-slate-600">Issues Resolved</p>
+                            </CardContent>
+                        </Card>
+                        <Card className="hover:shadow-md transition-shadow bg-gradient-to-br from-orange-50 to-amber-50 border-orange-100">
+                            <CardContent className="pt-6 text-center flex flex-col items-center">
+                                <div className="flex items-center gap-2 text-3xl font-bold text-orange-500 mb-1">
+                                    <Award className="h-6 w-6" /> {profile.points}
+                                </div>
+                                <p className="text-sm font-medium text-slate-600">Impact Points</p>
+                            </CardContent>
+                        </Card>
+                    </div>
 
-                    <Card className="col-span-1 sm:col-span-3 mt-4">
+                    <Card>
                         <CardHeader>
                             <CardTitle className="text-lg">About</CardTitle>
                         </CardHeader>
@@ -185,23 +190,45 @@ export default function ProfilePage() {
                         </CardContent>
                     </Card>
 
-                    {/* My Registered Events */}
-                    <Card className="col-span-1 sm:col-span-3 mt-4">
-                        <CardHeader className="flex flex-row items-center justify-between">
-                            <CardTitle className="text-lg flex items-center gap-2">
-                                <Award className="h-5 w-5 text-indigo-500" />
-                                My Registered Events
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <UserEventsList userId={profile.id} />
-                        </CardContent>
-                    </Card>
+                    {/* Tabs for Content */}
+                    <Tabs defaultValue="activity" className="w-full">
+                        <TabsList className="grid w-full grid-cols-4 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+                            <TabsTrigger value="activity" className="text-xs sm:text-sm">Activity</TabsTrigger>
+                            <TabsTrigger value="complaints" className="text-xs sm:text-sm">Complaints</TabsTrigger>
+                            <TabsTrigger value="reposts" className="text-xs sm:text-sm">Reposts</TabsTrigger>
+                            <TabsTrigger value="events" className="text-xs sm:text-sm">Events</TabsTrigger>
+                        </TabsList>
 
-                    {/* Activity Feed */}
-                    <div className="col-span-1 sm:col-span-3 mt-4">
-                        <ActivityFeed userId={profile.id} />
-                    </div>
+                        <TabsContent value="activity" className="mt-4">
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>Recent Activity</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <ActivityFeed userId={profile.id} />
+                                </CardContent>
+                            </Card>
+                        </TabsContent>
+
+                        <TabsContent value="complaints" className="mt-4">
+                            <MyComplaintsList userId={profile.id} />
+                        </TabsContent>
+
+                        <TabsContent value="reposts" className="mt-4">
+                            <MyRepostsList userId={profile.id} />
+                        </TabsContent>
+
+                        <TabsContent value="events" className="mt-4">
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>Registered Events</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <UserEventsList userId={profile.id} />
+                                </CardContent>
+                            </Card>
+                        </TabsContent>
+                    </Tabs>
                 </div>
             </div>
         </div>

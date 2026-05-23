@@ -1,18 +1,20 @@
-import { useRef, useEffect } from "react";
+import { useRef } from "react";
 import {
     Megaphone,
     TrendingUp,
     Plus,
     Users,
-    Gift
+    Gift,
+    Trash2,
+    Car,
+    Zap,
+    Wifi,
+    ChevronRight
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import gsap from "gsap";
 import { useNavigate } from "react-router-dom";
 import { QuickActions } from "@/components/dashboard/QuickActions";
-// import { db } from "@/lib/db";
-// import { supabase } from "@/lib/supabase";
 
 import { CityStatusBar } from "./CityStatusBar";
 import { ImpactPanel } from "./ImpactPanel";
@@ -23,121 +25,141 @@ import { JoinSquadModal } from "./JoinSquadModal";
 import { CityHeroLeaderboard } from "./CityHeroLeaderboard";
 import { AnnouncementsPanel } from "./AnnouncementsPanel";
 import { NearbyCivicCarousel } from "./NearbyCivicCarousel";
+import { useAuth } from "@/contexts/AuthContext";
 
-// ... inside render buffer ...
-{/* Dynamic Content Grid */ }
-<div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-
-    {/* LEFT: Live Alerts Timeline (7 cols) */}
-    <div className="lg:col-span-7 space-y-4">
-        <CityAlertTimeline />
-    </div>
-
-    {/* RIGHT: Community Zone (5 cols) */}
-    <div className="lg:col-span-5 space-y-6">
-        <CommunityZone />
-    </div>
-</div>
-
-{/* City Hero Leaderboard */ }
-<CityHeroLeaderboard />
-
-{/* Join the Squad - Bottom Call to Action */ }
-<JoinSquadCard count={250} />
-
-
-
-
-function ServiceItem({ image, title, sub, type }: { image: string, title: string, sub: string, type: string }) {
-    const navigate = useNavigate();
+// --- City Skyline SVG ---
+function CitySkyline() {
     return (
-        <div
-            onClick={() => navigate(`/services?type=${type}`)}
-            className="group relative flex min-w-[200px] cursor-pointer items-center gap-4 rounded-[1.5rem] bg-white p-3 pr-6 shadow-sm transition-all hover:scale-[1.02] dark:bg-slate-900 border border-slate-100 dark:border-slate-800 overflow-hidden"
-        >
-            <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-2xl">
-                <img src={image} alt={title} className="h-full w-full object-cover transition-transform group-hover:scale-110" />
-            </div>
-            <div>
-                <h4 className="font-bold text-slate-800 dark:text-slate-100 text-sm">{title}</h4>
-                <p className="text-xs font-medium text-slate-400">{sub}</p>
-            </div>
-        </div>
+        <svg viewBox="0 0 1200 200" fill="none" className="w-full h-full opacity-30" preserveAspectRatio="xMidYMax slice">
+            <defs>
+                <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#2563EB" stopOpacity="0.3" />
+                    <stop offset="100%" stopColor="#2563EB" stopOpacity="0.05" />
+                </linearGradient>
+            </defs>
+            {/* Buildings */}
+            <rect x="40" y="80" width="50" height="120" rx="4" fill="url(#skyGrad)">
+                <animate attributeName="height" values="120;115;120" dur="4s" repeatCount="indefinite" />
+            </rect>
+            <rect x="100" y="40" width="40" height="160" rx="4" fill="url(#skyGrad)">
+                <animate attributeName="height" values="160;155;160" dur="5s" repeatCount="indefinite" />
+            </rect>
+            <rect x="150" y="90" width="60" height="110" rx="4" fill="url(#skyGrad)" />
+            <rect x="220" y="20" width="35" height="180" rx="4" fill="url(#skyGrad)">
+                <animate attributeName="height" values="180;175;180" dur="3.5s" repeatCount="indefinite" />
+            </rect>
+            <rect x="265" y="60" width="55" height="140" rx="4" fill="url(#skyGrad)" />
+            <rect x="330" y="100" width="45" height="100" rx="4" fill="url(#skyGrad)" />
+            <rect x="385" y="30" width="50" height="170" rx="4" fill="url(#skyGrad)">
+                <animate attributeName="height" values="170;165;170" dur="4.5s" repeatCount="indefinite" />
+            </rect>
+            <rect x="445" y="70" width="40" height="130" rx="4" fill="url(#skyGrad)" />
+            <rect x="495" y="50" width="55" height="150" rx="4" fill="url(#skyGrad)" />
+            <rect x="560" y="85" width="35" height="115" rx="4" fill="url(#skyGrad)">
+                <animate attributeName="height" values="115;110;115" dur="3s" repeatCount="indefinite" />
+            </rect>
+            <rect x="605" y="35" width="50" height="165" rx="4" fill="url(#skyGrad)" />
+            <rect x="665" y="75" width="45" height="125" rx="4" fill="url(#skyGrad)" />
+            <rect x="720" y="45" width="40" height="155" rx="4" fill="url(#skyGrad)">
+                <animate attributeName="height" values="155;150;155" dur="5.5s" repeatCount="indefinite" />
+            </rect>
+            <rect x="770" y="90" width="55" height="110" rx="4" fill="url(#skyGrad)" />
+            <rect x="835" y="25" width="35" height="175" rx="4" fill="url(#skyGrad)" />
+            <rect x="880" y="60" width="50" height="140" rx="4" fill="url(#skyGrad)">
+                <animate attributeName="height" values="140;135;140" dur="4s" repeatCount="indefinite" />
+            </rect>
+            <rect x="940" y="80" width="40" height="120" rx="4" fill="url(#skyGrad)" />
+            <rect x="990" y="40" width="55" height="160" rx="4" fill="url(#skyGrad)" />
+            <rect x="1055" y="70" width="45" height="130" rx="4" fill="url(#skyGrad)" />
+            <rect x="1110" y="50" width="50" height="150" rx="4" fill="url(#skyGrad)">
+                <animate attributeName="height" values="150;145;150" dur="3.8s" repeatCount="indefinite" />
+            </rect>
+        </svg>
     );
 }
 
+// --- Service Chip ---
+function ServiceChip({ icon: Icon, title, gradient, onClick }: {
+    icon: any, title: string, gradient: string, onClick: () => void
+}) {
+    return (
+        <button
+            onClick={onClick}
+            className="group flex items-center gap-3 glass-card px-4 py-3 min-w-[160px] cursor-pointer hover:-translate-y-1 transition-all duration-300"
+        >
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white shrink-0 ${gradient} shadow-lg transition-transform group-hover:scale-110 group-hover:rotate-3`}>
+                <Icon className="h-5 w-5" />
+            </div>
+            <span className="text-sm font-bold text-slate-700 dark:text-slate-200 whitespace-nowrap">{title}</span>
+        </button>
+    );
+}
+
+// --- Activity Hub ---
 function ActivityHub({ stats }: { stats: { points: number, reports: number, resolved: number } }) {
-    // Calculate pseudo-score
     const total = stats.reports || 1;
     const rate = Math.round((stats.resolved / total) * 100) || 0;
-    const score = rate;
-    const circumference = 2 * Math.PI * 40; // r=40
-    const strokeDashoffset = circumference - (score / 100) * circumference;
+    const circumference = 2 * Math.PI * 52;
+    const strokeDashoffset = circumference - (rate / 100) * circumference;
     const navigate = useNavigate();
 
     return (
-        <div className="rounded-[2.5rem] bg-white p-6 shadow-sm dark:bg-slate-900 border border-slate-100 dark:border-slate-800 relative overflow-hidden">
-            {/* Subtle background tech pattern */}
-            <div className="absolute top-0 right-0 w-32 h-32 bg-slate-50 rounded-full -translate-y-1/2 translate-x-1/3 opacity-50 dark:bg-slate-800/50" />
+        <div className="glass-card p-6 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-40 h-40 bg-blue-500/5 rounded-full -translate-y-1/2 translate-x-1/3 blur-2xl pointer-events-none" />
 
             <div className="mb-6 flex items-center justify-between relative z-10">
                 <div>
-                    <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">Activity Hub</h3>
-                    <p className="text-xs text-slate-400">Personal performance</p>
+                    <h3 className="text-xl font-extrabold text-slate-800 dark:text-slate-100">Activity Hub</h3>
+                    <p className="text-xs text-slate-400 font-medium">Personal performance</p>
                 </div>
-                <div className="rounded-full bg-slate-100 p-2 dark:bg-slate-800">
-                    <TrendingUp className="h-5 w-5 text-slate-400" />
+                <div className="rounded-xl bg-blue-50 dark:bg-blue-900/30 p-2.5">
+                    <TrendingUp className="h-5 w-5 text-blue-500" />
                 </div>
             </div>
 
-            <div className="flex flex-col items-center gap-8 md:flex-row md:justify-around relative z-10">
-                {/* Gauge */}
-                <div className="relative flex h-32 w-32 items-center justify-center">
-                    <svg className="h-full w-full rotate-[-90deg]">
-                        <circle
-                            cx="64"
-                            cy="64"
-                            r="40"
-                            stroke="currentColor"
-                            strokeWidth="8"
-                            fill="transparent"
-                            className="text-slate-100 dark:text-slate-800"
-                        />
-                        <circle
-                            cx="64"
-                            cy="64"
-                            r="40"
-                            stroke="currentColor"
-                            strokeWidth="8"
-                            fill="transparent"
+            <div className="flex flex-col items-center gap-6 md:flex-row md:justify-around relative z-10">
+                {/* Progress Ring with Gradient Stroke */}
+                <div className="relative flex h-36 w-36 items-center justify-center shrink-0">
+                    <svg className="h-full w-full" viewBox="0 0 128 128">
+                        <defs>
+                            <linearGradient id="activityGrad" x1="0" y1="0" x2="1" y2="1">
+                                <stop offset="0%" stopColor="#2563EB" />
+                                <stop offset="100%" stopColor="#6366F1" />
+                            </linearGradient>
+                        </defs>
+                        <circle cx="64" cy="64" r="52" stroke="currentColor" strokeWidth="10" fill="transparent" className="text-slate-100 dark:text-slate-800" />
+                        <circle cx="64" cy="64" r="52" stroke="url(#activityGrad)" strokeWidth="10" fill="transparent"
                             strokeDasharray={circumference}
                             strokeDashoffset={strokeDashoffset}
                             strokeLinecap="round"
-                            className="text-teal-500 transition-all duration-1000 ease-out"
+                            className="transition-all duration-1000 ease-out"
+                            style={{ transform: 'rotate(-90deg)', transformOrigin: 'center' }}
                         />
                     </svg>
                     <div className="absolute flex flex-col items-center">
-                        <span className="text-2xl font-bold text-slate-800 dark:text-white">{score}%</span>
-                        <span className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Rate</span>
+                        <span className="text-3xl font-black text-gradient-blue count-animate">{stats.points}</span>
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-0.5">XP Points</span>
                     </div>
                 </div>
 
-                {/* Legend */}
-                <div className="grid grid-cols-2 gap-x-12 gap-y-4">
-                    <div className="flex flex-col group cursor-pointer transition-opacity hover:opacity-80" onClick={() => navigate('/rewards')}>
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1 group-hover:text-teal-600 transition-colors">
-                            Total Impact <Gift className="w-3 h-3 mb-0.5" />
-                        </span>
-                        <span className="text-2xl font-bold text-teal-600">{stats.points} Points</span>
+                {/* Stats Pills */}
+                <div className="flex flex-col gap-3 w-full md:w-auto">
+                    <div className="flex items-center gap-3 glass-card px-5 py-3 cursor-pointer hover:-translate-y-1" onClick={() => navigate('/rewards')}>
+                        <Gift className="w-5 h-5 text-blue-500" />
+                        <div>
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Impact</p>
+                            <p className="text-lg font-black text-blue-600 count-animate">{stats.points} Points</p>
+                        </div>
                     </div>
-                    <div className="col-span-2 h-[1px] w-full bg-slate-100 dark:bg-slate-800"></div>
-                    <div>
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total</span>
-                        <span className="text-lg font-bold text-slate-700 dark:text-slate-200">{stats.reports}</span>
-                    </div>
-                    <div>
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Solved</span>
-                        <span className="text-lg font-bold text-slate-700 dark:text-slate-200">{stats.resolved}</span>
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="glass-card px-4 py-3 text-center">
+                            <p className="text-2xl font-black text-slate-700 dark:text-slate-200 count-animate">{stats.reports}</p>
+                            <p className="text-[10px] font-bold uppercase text-slate-400">Reports</p>
+                        </div>
+                        <div className="glass-card px-4 py-3 text-center">
+                            <p className="text-2xl font-black text-emerald-600 count-animate">{stats.resolved}</p>
+                            <p className="text-[10px] font-bold uppercase text-slate-400">Resolved</p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -145,13 +167,11 @@ function ActivityHub({ stats }: { stats: { points: number, reports: number, reso
     );
 }
 
-
+// --- Join Squad Card ---
 function JoinSquadCard({ count }: { count: number }) {
     return (
         <JoinSquadModal>
-            <div
-                className="relative overflow-hidden rounded-[2.5rem] shadow-xl group cursor-pointer w-full text-left"
-            >
+            <div className="relative overflow-hidden rounded-[20px] shadow-xl group cursor-pointer w-full text-left">
                 {/* Background Image */}
                 <div className="absolute inset-0">
                     <img
@@ -159,35 +179,36 @@ function JoinSquadCard({ count }: { count: number }) {
                         alt="Volunteers"
                         className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
                     />
-                    <div className="absolute inset-0 bg-slate-900/80 group-hover:bg-slate-900/70 transition-colors" />
+                    <div className="absolute inset-0 bg-slate-900/85 group-hover:bg-slate-900/75 transition-colors" />
                     <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/50 to-transparent" />
                 </div>
 
                 <div className="relative z-10 flex flex-col p-8 text-white h-full">
                     <div className="flex items-center justify-between mb-8">
                         <div>
-                            <h3 className="text-2xl font-bold text-white">Join the Squad</h3>
-                            <div className="mt-2 flex items-center gap-2">
+                            <h3 className="text-3xl font-black">
+                                <span className="text-gradient-blue" style={{ WebkitTextFillColor: 'transparent', background: 'linear-gradient(135deg, #60A5FA, #A78BFA)', WebkitBackgroundClip: 'text', backgroundClip: 'text' }}>
+                                    Join the Squad
+                                </span>
+                            </h3>
+                            <div className="mt-3 flex items-center gap-3">
                                 <div className="flex -space-x-3">
-                                    <Avatar className="border-2 border-slate-900 w-8 h-8">
-                                        <AvatarImage src="https://i.pravatar.cc/100?img=1" />
-                                        <AvatarFallback>V1</AvatarFallback>
-                                    </Avatar>
-                                    <Avatar className="border-2 border-slate-900 w-8 h-8">
-                                        <AvatarImage src="https://i.pravatar.cc/100?img=5" />
-                                        <AvatarFallback>V2</AvatarFallback>
-                                    </Avatar>
-                                    <Avatar className="border-2 border-slate-900 w-8 h-8">
-                                        <AvatarImage src="https://i.pravatar.cc/100?img=8" />
-                                        <AvatarFallback>V3</AvatarFallback>
-                                    </Avatar>
+                                    {[1, 5, 8, 12].map(i => (
+                                        <Avatar key={i} className="border-2 border-slate-900 w-9 h-9">
+                                            <AvatarImage src={`https://i.pravatar.cc/100?img=${i}`} />
+                                            <AvatarFallback>V</AvatarFallback>
+                                        </Avatar>
+                                    ))}
+                                    <div className="w-9 h-9 rounded-full bg-blue-600 border-2 border-slate-900 flex items-center justify-center text-[10px] font-bold text-white">
+                                        +{count - 4}
+                                    </div>
                                 </div>
-                                <span className="text-sm font-medium text-slate-300 ml-1">{count}+ locals active</span>
+                                <span className="text-sm font-semibold text-slate-300">{count}+ locals active</span>
                             </div>
                         </div>
                     </div>
 
-                    <Button className="mt-auto w-full rounded-xl bg-white py-6 text-slate-900 hover:bg-teal-50 border-none shadow-lg">
+                    <Button className="mt-auto w-full rounded-xl bg-blue-600 py-6 text-white hover:bg-blue-700 border-none shadow-xl btn-glow transition-all">
                         <span className="text-sm font-bold uppercase tracking-widest">Volunteer Now</span>
                         <Users className="ml-2 h-4 w-4" />
                     </Button>
@@ -197,150 +218,149 @@ function JoinSquadCard({ count }: { count: number }) {
     );
 }
 
-import { useAuth } from "@/contexts/AuthContext";
-
+// =========== MAIN DASHBOARD ===========
 export function CommunityDashboard() {
-    // const { data: reports, isLoading: reportsLoading } = useReports(); // Unused
-    // const { data: volunteers } = useVolunteers(); // Unused
     const navigate = useNavigate();
     const { profile } = useAuth();
-
-    // Remove local fetch, rely on context
-
-    // Animation on mount
     const containerRef = useRef<HTMLDivElement>(null);
-    useEffect(() => {
-        if (containerRef.current) {
-            gsap.fromTo(containerRef.current.children,
-                { y: 30, opacity: 0 },
-                { y: 0, opacity: 1, stagger: 0.1, duration: 0.8, ease: "power3.out" }
-            );
-        }
-    }, []);
 
+    const greeting = (() => {
+        const hour = new Date().getHours();
+        if (hour < 12) return 'Good Morning,';
+        if (hour < 18) return 'Good Afternoon,';
+        return 'Good Evening,';
+    })();
+
+    const level = profile ? Math.floor(profile.points / 100) + 1 : 1;
+    const rankTitle = level >= 10 ? 'Platinum Guardian' : level >= 5 ? 'Gold Guardian' : level >= 3 ? 'Silver Guardian' : 'Bronze Guardian';
 
     return (
-        <div className="min-h-screen bg-slate-50/50 pb-24 pt-4 md:pt-6 dark:bg-slate-950 font-sans selection:bg-teal-100">
+        <div className="min-h-screen page-bg pb-24 pt-4 md:pt-6 font-sans selection:bg-blue-100">
             <div ref={containerRef} className="w-full max-w-7xl mx-auto space-y-6 md:space-y-8 px-4 sm:px-6 md:px-8">
 
-                {/* Header */}
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <Avatar className="h-12 w-12 border-2 border-white shadow-sm ring-2 ring-slate-100 cursor-pointer" onClick={() => navigate('/profile')}>
-                            <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${profile ? profile.name : 'Citizen'}`} />
-                            <AvatarFallback>{profile ? profile.name[0] : 'C'}</AvatarFallback>
-                        </Avatar>
-                        <div onClick={() => navigate('/profile')} className="cursor-pointer group">
-                            <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                                {(() => {
-                                    const hour = new Date().getHours();
-                                    if (hour < 12) return 'Good Morning,';
-                                    if (hour < 18) return 'Good Afternoon,';
-                                    return 'Good Evening,';
-                                })()}
-                                <span className=" bg-gradient-to-r from-teal-600 to-emerald-600 bg-clip-text text-transparent">
-                                    {profile ? profile.name.split(' ')[0] : 'Citizen'}
-                                </span>
-                            </h2>
-                            <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 group-hover:text-teal-600 transition-colors">
-                                <span className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wider text-slate-400">
-                                    LVL {profile ? Math.floor(profile.points / 100) + 1 : 1}
-                                </span>
-                                <span>Metropolis Guardian</span>
+                {/* ===== 1. GREETING SECTION ===== */}
+                <div className="anim-fade-up anim-delay-0">
+                    {/* Glassmorphic Hero Banner */}
+                    <div className="glass-card p-6 md:p-8 relative overflow-hidden">
+                        {/* Animated Skyline Background */}
+                        <div className="absolute inset-0 flex items-end pointer-events-none overflow-hidden">
+                            <CitySkyline />
+                        </div>
+
+                        <div className="relative z-10 flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                                {/* Animated Gradient Avatar Ring */}
+                                <div className="avatar-ring cursor-pointer" onClick={() => navigate('/profile')}>
+                                    <Avatar className="h-14 w-14 border-[3px] border-white dark:border-slate-900">
+                                        <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${profile ? profile.name : 'Citizen'}`} />
+                                        <AvatarFallback className="text-lg font-bold">{profile ? profile.name[0] : 'C'}</AvatarFallback>
+                                    </Avatar>
+                                </div>
+
+                                <div onClick={() => navigate('/profile')} className="cursor-pointer group">
+                                    <h2 className="text-xl font-extrabold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                                        {greeting}
+                                        <span className="text-gradient-blue">
+                                            {profile ? profile.name.split(' ')[0] : 'Citizen'}
+                                        </span>
+                                    </h2>
+                                    <div className="flex items-center gap-2 mt-1">
+                                        {/* Shimmer Rank Badge Pill */}
+                                        <span className="shimmer-badge px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">
+                                            LVL {level}
+                                        </span>
+                                        <span className="text-xs font-semibold text-slate-500 group-hover:text-blue-600 transition-colors">
+                                            {rankTitle}
+                                        </span>
+                                    </div>
+                                </div>
                             </div>
+
+                            <Button variant="ghost" size="icon" className="relative rounded-xl glass-card border-0 hover:bg-white/80 dark:hover:bg-slate-800/80 h-11 w-11">
+                                <span className="absolute right-2.5 top-2 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white" />
+                                <Megaphone className="h-5 w-5 text-slate-600 dark:text-slate-400" />
+                            </Button>
                         </div>
                     </div>
-                    <Button variant="ghost" size="icon" className="relative rounded-full bg-white shadow-sm border border-slate-100 hover:bg-slate-50 dark:bg-slate-900 dark:border-slate-800">
-                        <span className="absolute right-3 top-2 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white" />
-                        <Megaphone className="h-5 w-5 text-slate-600 dark:text-slate-400" />
-                    </Button>
                 </div>
 
-                {/* Hero */}
-                <CityStatusBar />
+                {/* ===== 2. LIVE STATUS ===== */}
+                <div className="anim-fade-up anim-delay-1">
+                    <CityStatusBar />
+                </div>
 
-                {/* Announcements Panel (Added) */}
-                <AnnouncementsPanel />
+                {/* ===== 3. Announcements ===== */}
+                <div className="anim-fade-up anim-delay-2">
+                    <AnnouncementsPanel />
+                </div>
 
-                {/* Impact Panel */}
-                <ImpactPanel profile={profile} />
+                {/* ===== 4. IMPACT PANEL ===== */}
+                <div className="anim-fade-up anim-delay-3">
+                    <ImpactPanel profile={profile} />
+                </div>
 
-                {/* Quick Actions */}
-                <QuickActions />
+                {/* ===== 5. QUICK ACTIONS ===== */}
+                <div className="anim-fade-up anim-delay-4">
+                    <QuickActions />
+                </div>
 
-                {/* City Services Scroll */}
-                <div>
+                {/* ===== 6. CITY SERVICES ===== */}
+                <div className="anim-fade-up anim-delay-5">
                     <div className="mb-4 flex items-center justify-between px-1">
-                        <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">City Services</h3>
-                        <div className="text-xs font-bold text-teal-600 cursor-pointer hover:underline">View All</div>
+                        <h3 className="text-lg font-extrabold text-slate-800 dark:text-slate-100">City Services</h3>
+                        <button className="text-xs font-bold text-blue-600 hover:underline flex items-center gap-1" onClick={() => navigate('/services')}>
+                            View All <ChevronRight className="w-3.5 h-3.5" />
+                        </button>
                     </div>
-                    <div className="hide-scrollbar -mx-6 flex gap-4 overflow-x-auto px-6 pb-4">
-                        <ServiceItem
-                            image="https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?w=150&auto=format&fit=crop&q=60"
-                            title="Waste Pick-up"
-                            sub="Tue, Oct 24"
-                            type="garbage"
-                        />
-                        <ServiceItem
-                            image="https://images.unsplash.com/photo-1506521781263-d8422e82f27a?w=150&auto=format&fit=crop&q=60"
-                            title="Parking Permit"
-                            sub="Renew: 12d"
-                            type="road"
-                        />
-                        <ServiceItem
-                            image="https://images.unsplash.com/photo-1473341304170-971dccb5ac1e?w=150&auto=format&fit=crop&q=60"
-                            title="Electricity"
-                            sub="Due: $45.20"
-                            type="electricity"
-                        />
-                        <ServiceItem
-                            image="https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=150&auto=format&fit=crop&q=60"
-                            title="Community Wifi"
-                            sub="Active"
-                            type="electricity"
-                        />
+                    <div className="hide-scrollbar -mx-4 flex gap-3 overflow-x-auto px-4 pb-4">
+                        <ServiceChip icon={Trash2} title="Waste Pick-up" gradient="gradient-icon-green" onClick={() => navigate('/services/waste')} />
+                        <ServiceChip icon={Car} title="Parking Permit" gradient="gradient-icon-blue" onClick={() => navigate('/services/parking')} />
+                        <ServiceChip icon={Zap} title="Electricity" gradient="gradient-icon-orange" onClick={() => navigate('/services/electricity')} />
+                        <ServiceChip icon={Wifi} title="Community WiFi" gradient="gradient-icon-indigo" onClick={() => navigate('/services/wifi')} />
                     </div>
                 </div>
 
-                {/* Nearby Civic Carousel */}
-                <NearbyCivicCarousel />
+                {/* ===== 7. CIVIC PULSE ===== */}
+                <div className="anim-fade-up anim-delay-6">
+                    <NearbyCivicCarousel />
+                </div>
 
-                {/* ActivityHub */}
-                <ActivityHub stats={{
-                    points: profile ? profile.points : 0,
-                    reports: profile ? profile.reports_count : 0,
-                    resolved: profile ? profile.resolved_count : 0
-                }} />
+                {/* ===== 8. ACTIVITY HUB ===== */}
+                <div className="anim-fade-up anim-delay-7">
+                    <ActivityHub stats={{
+                        points: profile ? profile.points : 0,
+                        reports: profile ? profile.reports_count : 0,
+                        resolved: profile ? profile.resolved_count : 0
+                    }} />
+                </div>
 
-                {/* Dynamic Content Grid */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-
-                    {/* LEFT: Live Alerts Timeline (7 cols) */}
+                {/* ===== 9. CONTENT GRID (Alerts + Community) ===== */}
+                <div className="anim-fade-up anim-delay-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
                     <div className="lg:col-span-7 space-y-8">
-                        {/* Heatmap Section */}
                         <CityHeatmap />
-
                         <CityAlertTimeline />
                     </div>
-
-                    {/* RIGHT: Community Zone (5 cols) */}
                     <div className="lg:col-span-5 space-y-6">
                         <CommunityZone />
                     </div>
                 </div>
 
-                {/* City Hero Leaderboard */}
-                <CityHeroLeaderboard />
+                {/* ===== 10. CITY HEROES ===== */}
+                <div className="anim-fade-up anim-delay-9">
+                    <CityHeroLeaderboard />
+                </div>
 
-                {/* Join the Squad - Bottom Call to Action */}
-                <JoinSquadCard count={250} />
+                {/* ===== 11. JOIN SQUAD CTA ===== */}
+                <div className="anim-fade-up anim-delay-10">
+                    <JoinSquadCard count={250} />
+                </div>
 
                 {/* Floating Action Button for Mobile */}
                 <div className="fixed bottom-24 right-6 z-40 md:hidden pointer-events-none">
-                    <div className="pointer-events-auto shadow-xl rounded-full">
+                    <div className="pointer-events-auto">
                         <Button
                             size="icon"
-                            className="h-14 w-14 rounded-full bg-teal-600 hover:bg-teal-700 shadow-none border-none"
+                            className="h-14 w-14 rounded-full bg-blue-600 hover:bg-blue-700 shadow-xl shadow-blue-200/50 border-none"
                             onClick={() => navigate('/complaints')}
                         >
                             <Plus className="h-6 w-6 text-white" />

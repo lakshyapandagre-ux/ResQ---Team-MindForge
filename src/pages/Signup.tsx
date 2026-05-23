@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,7 @@ export function Signup() {
     const navigate = useNavigate();
     const { user, profile, loading: authLoading, signUp } = useAuth();
     const [loading, setLoading] = useState(false);
+    const isSubmittingRef = useRef(false); // DOM-level lock
     const [step, setStep] = useState(1);
 
     // Form State
@@ -35,6 +36,11 @@ export function Signup() {
 
     const handleSignup = async (e: React.FormEvent) => {
         e.preventDefault();
+        
+        // Prevent double-submission before React state updates
+        if (isSubmittingRef.current || loading) return;
+        
+        isSubmittingRef.current = true;
         setLoading(true);
 
         try {
@@ -58,7 +64,12 @@ export function Signup() {
 
         } catch (error: any) {
             toast.error(error.message || "Failed to create account");
+        } finally {
             setLoading(false);
+            // Add a small cooldown before allowing another submission attempt
+            setTimeout(() => {
+                isSubmittingRef.current = false;
+            }, 1000);
         }
     };
 

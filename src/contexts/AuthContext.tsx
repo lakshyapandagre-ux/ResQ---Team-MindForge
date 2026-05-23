@@ -2,10 +2,6 @@ import { createContext, useContext, useEffect, useState, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import { db } from "@/lib/db";
 
-// Use the Profile type from db.ts or define a compatible one here.
-// To avoid circular dependencies if we imported from db, we redefine it slightly or import if possible.
-// For now, let's make it fully compatible with db.ts Profile.
-
 export interface Profile {
   id: string;
   name: string;
@@ -57,175 +53,178 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [profileError, setProfileError] = useState<string | null>(null);
-  const resolvingRef = useRef(false); // Ref to prevent double-fetching
+
+  // Promise cache to deduplicate simultaneous profile fetches
+  const fetchPromiseRef = useRef<Promise<Profile> | null>(null);
 
   useEffect(() => {
-    initAuth();
-
-    const { data: listener } = supabase.auth.onAuthStateChange(
+    // 1. Single Listener setup. No separate initAuth() call to prevent double-firing.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log("[Auth] State change:", event);
+        console.log(`[Auth] State change: ${event}`);
 
-        if (session?.user) {
-          setUser(session.user);
-          await loadProfile(session.user);
-        } else {
-          setUser(null);
-          setProfile(null);
-          setProfileError(null);
+        if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
+          if (session?.user) {
+            setUser(session.user);
+            await loadProfile(session.user);
+          } else {
+            handleLoggedOutState();
+          }
+        } else if (event === 'SIGNED_OUT') {
+          handleLoggedOutState();
         }
-
+        // Ignore TOKEN_REFRESHED / USER_UPDATED for profile loading to prevent spam
+        
+        // Ensure loading screen clears
         setLoading(false);
       }
     );
 
     return () => {
-      listener.subscription.unsubscribe();
+      subscription.unsubscribe();
     };
   }, []);
 
-  const initAuth = async () => {
-    try {
-      console.log("[Auth] Init started");
-
-      // Create a race between the session fetch and a 5-second timeout
-      const sessionPromise = supabase.auth.getSession();
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Auth Init Timeout")), 5000)
-      );
-
-      const {
-        data: { session },
-      } = (await Promise.race([sessionPromise, timeoutPromise])) as any;
-
-      if (session?.user) {
-        setUser(session.user);
-        await loadProfile(session.user);
-      }
-    } catch (err: any) {
-      if (err.message === "Auth Init Timeout") {
-        console.warn("[Auth] Initialization timed out - proceeding as logged out.");
-      } else if (!err?.message?.includes('AbortError') && err?.name !== 'AbortError') {
-        console.error("[Auth] Init error", err);
-      }
-    } finally {
-      if (resolvingRef.current) {
-        // If profile load is still running in background, we might want to respect it, 
-        // but for initAuth, we want to unblock UI.
-        // We do nothing special, assuming loadProfile handles its own state or finishes later.
-      }
-      setLoading(false);
-    }
+  const handleLoggedOutState = () => {
+    setUser(null);
+    setProfile(null);
+    setProfileError(null);
+    fetchPromiseRef.current = null;
   };
 
-  const loadProfile = async (user: any, retries = 3): Promise<void> => {
-    if (resolvingRef.current) {
-      console.log("[Auth] Profile load already in progress, skipping.");
+  const getFallbackProfile = (userData: any): Profile => {
+    console.warn("[Auth] Generating fallback profile to unblock UI.");
+    return {
+      id: userData.id,
+      name: userData.user_metadata?.full_name || userData.email?.split('@')[0] || 'Citizen',
+      email: userData.email || '',
+      role: userData.user_metadata?.role || 'citizen',
+      city: userData.user_metadata?.city || 'Indore',
+      status: 'active',
+      points: 0,
+      reports_count: 0,
+      resolved_count: 0,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+  };
+
+  const loadProfile = async (userData: any, forceRefresh = false, retries = 3): Promise<void> => {
+    // 1. Deduplication Lock: If already fetching and not forcing a refresh, await existing promise
+    if (fetchPromiseRef.current && !forceRefresh) {
+      console.log("[Auth] Profile fetch already in progress, awaiting existing request.");
+      try {
+        await fetchPromiseRef.current;
+      } catch (e) {
+        // Handled by the original fetcher
+      }
       return;
     }
-    resolvingRef.current = true;
 
     setProfileError(null);
+
+    // 2. Setup the fetch promise with a strict 8-second timeout
+    const fetchAttempt = async (): Promise<Profile> => {
+      console.log(`[Auth] Fetching profile... (Attempts left: ${retries})`);
+      if (retries < 3) await new Promise(r => setTimeout(r, 1500)); // Exponential backoff simulation
+
+      // AbortController to properly cancel hanging fetch requests
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+      try {
+        // Assuming db.getOrCreateProfile handles its own network calls, 
+        // we wrap it. If it doesn't support signals, the Promise.race below serves as a strict boundary.
+        const profileData = await Promise.race([
+          db.getOrCreateProfile(userData),
+          new Promise((_, reject) => {
+            controller.signal.addEventListener('abort', () => reject(new Error("Profile Load Timeout")));
+          })
+        ]);
+        
+        clearTimeout(timeoutId);
+        return profileData as Profile;
+      } catch (error) {
+        clearTimeout(timeoutId);
+        throw error;
+      }
+    };
+
+    // Store the active promise in the ref cache
+    fetchPromiseRef.current = fetchAttempt();
+
     try {
-      console.log(`[Auth] Loading profile... (Attempts left: ${retries})`);
-
-      // Add a small delay if retrying
-      if (retries < 3) await new Promise(r => setTimeout(r, 1000));
-
-      // Race condition to prevent hanging
-      const fetchPromise = db.getOrCreateProfile(user);
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Profile Load Timeout")), 8000)
-      );
-
-      const data = await Promise.race([fetchPromise, timeoutPromise]);
-
-      setProfile(data as Profile);
-      console.log("[Auth] Profile loaded:", data);
-
+      const data = await fetchPromiseRef.current;
+      setProfile(data);
+      console.log("[Auth] Profile loaded successfully.");
     } catch (err: any) {
-      // Ignore specific AbortError logging
+      // Ignore AbortError spam
       if (!err?.message?.includes('AbortError') && err.message !== "Profile Load Timeout") {
         console.error("[Auth] Profile load failed:", err);
       }
 
       // Retry logic
       if (retries > 0) {
-        // Log retry attempt for debugging
-        if (err?.name === 'AbortError' || err.message === "Profile Load Timeout") {
-          console.log(`[Auth] Retrying fetch... (${retries})`);
+        if (err.message === "Profile Load Timeout" || err?.name === 'AbortError') {
+          console.log(`[Auth] Timeout reached. Retrying... (${retries})`);
         }
-        resolvingRef.current = false; // Reset lock for retry
-        return loadProfile(user, retries - 1);
+        // Must clear the cache so the retry creates a new promise
+        fetchPromiseRef.current = null;
+        return loadProfile(userData, true, retries - 1);
       }
 
-      // FALLBACK: If all retries fail, use a temporary profile to allow access
-      console.warn("[Auth] Using fallback profile due to load failure.");
-      const fallbackProfile: Profile = {
-        id: user.id,
-        name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Citizen',
-        email: user.email || '',
-        role: 'citizen',
-        city: 'Indore',
-        status: 'active',
-        points: 0,
-        reports_count: 0,
-        resolved_count: 0,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
-      setProfile(fallbackProfile);
-      setProfileError(null); // Clear error since we are "handling" it via fallback
-
+      // Fallback Strategy
+      const fallback = getFallbackProfile(userData);
+      setProfile(fallback);
+      setProfileError("Unable to connect to database. Operating in offline mode.");
+      
     } finally {
-      resolvingRef.current = false;
+      // Clear the cache ONLY if this exact promise was the active one
+      // (prevents clearing if a retry injected a new promise)
+      // Actually, it's safer to just clear it if we finished, so future refreshes work.
+      fetchPromiseRef.current = null;
     }
   };
 
   const refreshProfile = async () => {
     if (user) {
-      await loadProfile(user);
+      await loadProfile(user, true);
     }
   };
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
-    // Auth state listener will handle the rest (user set, profile load)
   };
 
   const signUp = async (email: string, password: string, metaData?: any) => {
-    // We explicitly set options to prevent auto-login loops if confirmation is needed
-    // But currently Supabase behaves based on project config.
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: metaData,
-        // Redirect to a specific confirmation page or login?
-        // User requested: "Confirmation link should redirect to localhost in dev / vercel in prod"
-        // We use window.location.origin to get the current domain dynamically
         emailRedirectTo: `${window.location.origin}/login`
       }
     });
-    if (error) throw error;
+    
+    if (error) {
+      // Custom handler for 429 Rate Limits
+      if (error.status === 429 || error.message.toLowerCase().includes('rate limit')) {
+        throw new Error("Too many signup attempts. Please wait a few minutes before trying again.");
+      }
+      throw error;
+    }
   };
 
   const signOut = async () => {
     try {
       await supabase.auth.signOut();
     } catch (error: any) {
-      // Ignore AbortError which happens if we sign out while other requests are pending
-      if (error?.name === 'AbortError' || error?.message?.includes('AbortError')) {
-        console.log("[Auth] Sign out request aborted pending fetches (normal behavior)");
-      } else {
+      if (!error?.message?.includes('AbortError')) {
         console.error("[Auth] Sign out error:", error);
       }
     } finally {
-      // Always clear local state
-      setUser(null);
-      setProfile(null);
-      setProfileError(null);
+      handleLoggedOutState();
     }
   };
 

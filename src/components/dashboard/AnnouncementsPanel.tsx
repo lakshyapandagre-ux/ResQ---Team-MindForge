@@ -17,8 +17,8 @@ interface Announcement {
 export function AnnouncementsPanel() {
     const containerRef = useRef<HTMLDivElement>(null);
     const { data: announcements = [], isLoading: loading } = useQuery<Announcement[]>({
-        queryKey: ['announcements'],
-        queryFn: () => db.getAnnouncements(),
+        queryKey: ['announcements', 'simple'],
+        queryFn: () => db.getAnnouncementsSimple() as any, // Cast because simple query might miss optional fields
     });
 
     // Animation hook depends on data loading

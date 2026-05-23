@@ -84,8 +84,10 @@ export interface ComplaintData {
     priority: string;
     created_at: string;
     supports_count?: number;
+    reposts_count?: number;
     comments_count?: number;
     user_has_supported?: boolean;
+    user_has_reposted?: boolean;
     profiles?: {
         name: string;
         role: string;
@@ -180,6 +182,7 @@ export const db = {
                 *,
                 profiles:user_id (name, role),
                 complaint_supports!left (user_id),
+                complaint_reposts!left (user_id),
                 complaint_comments!left (id)
             `)
                 .order('created_at', { ascending: false });
@@ -199,8 +202,10 @@ export const db = {
             let processed = data.map((c: any) => ({
                 ...c,
                 supports_count: c.complaint_supports?.length || 0,
+                reposts_count: c.complaint_reposts?.length || 0,
                 comments_count: c.complaint_comments?.length || 0,
                 user_has_supported: c.complaint_supports?.some((s: any) => s.user_id === currentUserId),
+                user_has_reposted: c.complaint_reposts?.some((r: any) => r.user_id === currentUserId),
                 author: {
                     name: c.profiles?.name || 'Anonymous',
                     role: c.profiles?.role || 'Citizen',
@@ -209,7 +214,10 @@ export const db = {
             }));
 
             if (filter === 'trending') {
-                processed.sort((a, b) => b.supports_count - a.supports_count);
+                processed.sort((a, b) => {
+                    if (b.reposts_count !== a.reposts_count) return b.reposts_count - a.reposts_count;
+                    return b.supports_count - a.supports_count;
+                });
             } else if (filter === 'near_me' && userLat && userLng) {
                 processed.sort((a, b) => {
                     const distA = getDistance(userLat, userLng, a.lat || 0, a.lng || 0);
@@ -608,6 +616,198 @@ export const db = {
                 resolved_count: p.resolved_count || 0,
                 rank_change: 'same' as const
             }));
+        });
+    },
+
+    async getHeroesSimple(limit = 10) {
+        return this.getHeroes(limit); // Already optimized column selection
+    },
+
+    async getAnnouncementsSimple() {
+        const { data, error } = await supabase
+            .from('announcements')
+            .select('id, title, message, created_at')
+            .order('created_at', { ascending: false });
+
+        if (error) {
+            if (error.code === '42P01') return [];
+            throw error;
+        }
+        return data; // No author join
+    },
+
+    async getComplaintsFeed(limit = 20) {
+        return withRetry(async () => {
+            const { data, error } = await supabase
+                .from('complaints')
+                .select(`
+                    id, title, category, location, status, priority, created_at,
+                    complaint_supports!left (user_id)
+                `)
+                .order('created_at', { ascending: false })
+                .limit(limit);
+
+            if (error) {
+                if (error.code === '42P01') return [];
+                throw error;
+            }
+
+            return data.map((c: any) => ({
+                ...c,
+                supports_count: c.complaint_supports?.length || 0
+            }));
+        });
+    },
+
+    // Civic Feed Upgrades (Comments & Reposts)
+    async getComplaintComments(complaintId: string) {
+        const { data, error } = await supabase
+            .from('complaint_comments')
+            .select(`
+                id,
+                comment,
+                created_at,
+                profiles:user_id (name)
+            `)
+            .eq('complaint_id', complaintId)
+            .order('created_at', { ascending: true });
+
+        if (error) {
+            if (error.code === '42P01') return [];
+            throw error;
+        }
+
+        return data.map((c: any) => ({
+            id: c.id,
+            message: c.comment,
+            created_at: c.created_at,
+            author_name: c.profiles?.name || 'Anonymous'
+        }));
+    },
+
+    async createComplaintComment(commentData: {
+        user_id: string;
+        complaint_id: string;
+        comment: string;
+    }) {
+        const { data, error } = await supabase
+            .from('complaint_comments')
+            .insert([commentData])
+            .select()
+            .single();
+
+        if (error) throw error;
+        return data;
+    },
+
+    async getUserComplaints(userId: string) {
+        return withRetry(async () => {
+            const { data, error } = await supabase
+                .from('complaints')
+                .select(`
+                    *,
+                    profiles:user_id (name, role),
+                    complaint_supports!left (user_id),
+                    complaint_reposts!left (user_id),
+                    complaint_comments!left (id)
+                `)
+                .eq('user_id', userId)
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+
+            const currentUserId = (await supabase.auth.getUser()).data.user?.id;
+
+            return data.map((c: any) => ({
+                ...c,
+                supports_count: c.complaint_supports?.length || 0,
+                reposts_count: c.complaint_reposts?.length || 0,
+                comments_count: c.complaint_comments?.length || 0,
+                user_has_supported: c.complaint_supports?.some((s: any) => s.user_id === currentUserId),
+                user_has_reposted: c.complaint_reposts?.some((r: any) => r.user_id === currentUserId),
+                author: {
+                    name: c.profiles?.name || 'Anonymous',
+                    role: c.profiles?.role || 'Citizen',
+                    avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${c.profiles?.name || c.user_id}`
+                }
+            }));
+        });
+    },
+
+    async getUserReposts(userId: string) {
+        return withRetry(async () => {
+            // 1. Get IDs of reposted complaints
+            const { data: reposts, error: repostError } = await supabase
+                .from('complaint_reposts')
+                .select('complaint_id')
+                .eq('user_id', userId);
+
+            if (repostError) throw repostError;
+            const ids = reposts.map(r => r.complaint_id);
+
+            if (ids.length === 0) return [];
+
+            // 2. Fetch complaints details
+            const { data, error } = await supabase
+                .from('complaints')
+                .select(`
+                    *,
+                    profiles:user_id (name, role),
+                    complaint_supports!left (user_id),
+                    complaint_reposts!left (user_id),
+                    complaint_comments!left (id)
+                `)
+                .in('id', ids)
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+
+            const currentUserId = (await supabase.auth.getUser()).data.user?.id;
+
+            return data.map((c: any) => ({
+                ...c,
+                supports_count: c.complaint_supports?.length || 0,
+                reposts_count: c.complaint_reposts?.length || 0,
+                comments_count: c.complaint_comments?.length || 0,
+                user_has_supported: c.complaint_supports?.some((s: any) => s.user_id === currentUserId),
+                user_has_reposted: c.complaint_reposts?.some((r: any) => r.user_id === currentUserId),
+                author: {
+                    name: c.profiles?.name || 'Anonymous',
+                    role: c.profiles?.role || 'Citizen',
+                    avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${c.profiles?.name || c.user_id}`
+                }
+            }));
+        });
+    },
+
+    async toggleRepost(complaintId: string, userId: string): Promise<boolean> {
+        return withRetry(async () => {
+            const { data: existing, error: fetchError } = await supabase
+                .from('complaint_reposts')
+                .select('id')
+                .eq('complaint_id', complaintId)
+                .eq('user_id', userId)
+                .maybeSingle();
+
+            if (fetchError) throw fetchError;
+
+            if (existing) {
+                // remove repost
+                const { error } = await supabase
+                    .from('complaint_reposts')
+                    .delete()
+                    .eq('complaint_id', complaintId)
+                    .eq('user_id', userId);
+                if (error) throw error;
+                return false;
+            } else {
+                // add repost
+                const { error } = await supabase
+                    .from('complaint_reposts')
+                    .insert([{ complaint_id: complaintId, user_id: userId }]);
+                if (error) throw error;
+                return true;
+            }
         });
     },
 

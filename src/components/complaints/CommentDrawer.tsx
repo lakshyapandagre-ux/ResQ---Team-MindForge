@@ -7,15 +7,17 @@ import { CommentsSection } from "@/components/common/CommentsSection";
 interface CommentDrawerProps {
     complaintId: string;
     commentCount: number;
+    disabled?: boolean;
+    onCommentAdded?: () => void;
 }
 
-export function CommentDrawer({ complaintId, commentCount }: CommentDrawerProps) {
+export function CommentDrawer({ complaintId, commentCount, disabled, onCommentAdded }: CommentDrawerProps) {
     const [isOpen, setIsOpen] = useState(false);
 
     return (
         <Drawer open={isOpen} onOpenChange={setIsOpen}>
             <DrawerTrigger asChild>
-                <Button variant="ghost" className="flex items-center gap-2 text-slate-600 hover:bg-white hover:shadow-sm transition-all h-9">
+                <Button variant="ghost" disabled={disabled} className="flex items-center gap-2 text-slate-600 hover:bg-white hover:shadow-sm transition-all h-9">
                     <MessageCircle className="h-4 w-4" />
                     <span className="text-xs font-medium">{commentCount} Comments</span>
                 </Button>
@@ -26,7 +28,7 @@ export function CommentDrawer({ complaintId, commentCount }: CommentDrawerProps)
                 </DrawerHeader>
 
                 <div className="h-full p-4 pb-10">
-                    <CommentsSection parentId={complaintId} parentType="complaint" />
+                    <CommentsSection parentId={complaintId} parentType="complaint" onCommentAdded={onCommentAdded} />
                 </div>
             </DrawerContent>
         </Drawer>

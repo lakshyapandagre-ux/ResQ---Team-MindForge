@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 import { LocationPicker } from "./LocationPicker";
 import { supabase } from "@/lib/supabase";
 import { db } from "@/lib/db";
+import { useNetworkStatus } from "@/hooks/use-network-status";
 
 const complaintSchema = z.object({
     title: z.string().min(5, "Title too short"),
@@ -34,6 +35,7 @@ export function ReportForm({ onSuccess }: { onSuccess?: () => void }) {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const { isOnline } = useNetworkStatus();
 
     const form = useForm<z.infer<typeof complaintSchema>>({
         resolver: zodResolver(complaintSchema),
@@ -88,6 +90,40 @@ export function ReportForm({ onSuccess }: { onSuccess?: () => void }) {
     const onSubmit = async (data: z.infer<typeof complaintSchema>) => {
         try {
             setIsSubmitting(true);
+
+            if (!isOnline) {
+                // Offline Submission Logic
+                if (images.length > 0) {
+                    toast.warning("Images cannot be uploaded while offline. Report will be saved without images.");
+                }
+
+                const offlineReport = {
+                    id: crypto.randomUUID(), // Temporary ID
+                    ...data,
+                    lat: coords?.lat,
+                    lng: coords?.lng,
+                    images: [], // No images for offline
+                    created_at: new Date().toISOString(),
+                    status: 'pending_sync'
+                };
+
+                const existing = JSON.parse(localStorage.getItem('offline_reports') || '[]');
+                localStorage.setItem('offline_reports', JSON.stringify([...existing, offlineReport]));
+
+                toast.success("You are offline. Report saved to device and will sync when online.", {
+                    icon: <CheckCircle2 className="text-yellow-500" />
+                });
+
+                setIsSubmitting(false);
+                setStep(1);
+                form.reset();
+                setImages([]);
+                setImageUrls([]);
+                setCoords(null);
+                onSuccess?.();
+                return;
+            }
+
             console.log('[ReportForm] Starting submission...');
 
             const { data: { user } } = await supabase.auth.getUser();

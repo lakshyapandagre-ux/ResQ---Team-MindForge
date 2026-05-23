@@ -1,4 +1,5 @@
 import { Toaster } from "@/components/ui/toaster";
+import { OfflineSyncManager } from "@/components/common/OfflineSyncManager";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -40,6 +41,7 @@ import { Unauthorized } from "@/pages/Unauthorized";
 import { ForgotPassword } from "@/pages/ForgotPassword";
 import { UpdatePassword } from "@/pages/UpdatePassword";
 import EmergencyDashboard from "@/pages/EmergencyDashboard";
+import { ChatBot } from "@/components/chat/ChatBot";
 
 const App = () => (
   <ErrorBoundary>
@@ -48,8 +50,10 @@ const App = () => (
         <Toaster />
         <Sonner />
         <AuthProvider>
+          <OfflineSyncManager />
           <AppBootstrap>
             <BrowserRouter>
+              <ChatBot />
               <Routes>
                 {/* Emergency Command Center - Isolated */}
                 <Route path="/emergency" element={<EmergencyDashboard />} />

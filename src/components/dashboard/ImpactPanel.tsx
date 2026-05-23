@@ -1,4 +1,3 @@
-
 import {
     Flag,
     CheckCircle2,
@@ -12,7 +11,6 @@ import { ProgressRing } from "./ProgressRing";
 import { RankBadge, type Rank } from "./RankBadge";
 import { StatCounter } from "./StatCounter";
 import { AchievementBadge } from "./AchievementBadge";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import type { Profile } from "@/contexts/AuthContext";
@@ -30,9 +28,6 @@ interface ImpactPanelProps {
     profile: Profile | null;
 }
 
-
-// ... imports ...
-
 export function ImpactPanel({ profile }: ImpactPanelProps) {
     const navigate = useNavigate();
     const [helpedCount, setHelpedCount] = useState(0);
@@ -49,7 +44,6 @@ export function ImpactPanel({ profile }: ImpactPanelProps) {
         fetchHelps();
     }, [profile?.id]);
 
-    // Derived stats from profile or defaults
     const stats: ImpactStats = {
         points: profile?.points || 0,
         reports: profile?.reports_count || 0,
@@ -57,7 +51,6 @@ export function ImpactPanel({ profile }: ImpactPanelProps) {
         helped: helpedCount
     };
 
-    // Logic for Rank
     const getRankInfo = (points: number): { current: Rank, next: Rank, max: number } => {
         if (points < 100) return { current: 'Bronze', next: 'Silver', max: 100 };
         if (points < 300) return { current: 'Silver', next: 'Gold', max: 300 };
@@ -66,64 +59,78 @@ export function ImpactPanel({ profile }: ImpactPanelProps) {
 
     const rankInfo = getRankInfo(stats.points);
     const progressPercent = Math.min(100, Math.round((stats.points / rankInfo.max) * 100));
+    const circumference = 2 * Math.PI * 52;
+    const strokeDashoffset = circumference - (progressPercent / 100) * circumference;
+
+    const rankGradient = rankInfo.current === 'Gold'
+        ? { from: '#D97706', to: '#FBBF24' }
+        : rankInfo.current === 'Silver'
+            ? { from: '#64748B', to: '#94A3B8' }
+            : { from: '#92400E', to: '#D97706' };
 
     return (
-        <Card className="relative overflow-hidden border-0 bg-white/50 backdrop-blur-md shadow-xl dark:bg-slate-900/50 dark:border-slate-800 rounded-[2rem]">
+        <div className="glass-card relative overflow-hidden">
             {/* Decorative Background Gradients */}
-            <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/2 w-64 h-64 bg-indigo-500/10 blur-[80px] rounded-full pointer-events-none" />
-            <div className="absolute bottom-0 left-0 translate-y-1/2 -translate-x-1/2 w-64 h-64 bg-teal-500/10 blur-[80px] rounded-full pointer-events-none" />
+            <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/2 w-64 h-64 bg-blue-500/8 blur-[80px] rounded-full pointer-events-none" />
+            <div className="absolute bottom-0 left-0 translate-y-1/2 -translate-x-1/2 w-64 h-64 bg-indigo-500/8 blur-[80px] rounded-full pointer-events-none" />
 
             <div className="grid grid-cols-1 md:grid-cols-12 gap-6 p-6 md:p-8">
 
                 {/* LEFT: Progress Circle & Rank */}
                 <div className="md:col-span-4 flex flex-row md:flex-col items-center justify-between md:justify-center relative gap-4">
                     <div className="relative shrink-0">
-                        {/* Mobile Size: 110, Desktop: 160. Inline style used for specific overrides, but component takes simple number. 
-                            We can toggle 'size' prop based on screen breadth or simply pick a middle ground 130 and adjust scaling.
-                            Better approach: Render scale wrapper.
-                        */}
                         <div className="scale-75 md:scale-100 origin-left md:origin-center">
-                            <ProgressRing
-                                progress={progressPercent}
-                                size={160}
-                                strokeWidth={12}
-                                color={
-                                    rankInfo.current === 'Gold' ? "text-yellow-500" :
-                                        rankInfo.current === 'Silver' ? "text-slate-400" : "text-amber-600"
-                                }
-                            >
-                                <div className="flex flex-col items-center gap-1">
+                            {/* Custom SVG Progress Ring with Gradient */}
+                            <div className="relative flex h-[160px] w-[160px] items-center justify-center">
+                                <svg className="h-full w-full" viewBox="0 0 128 128">
+                                    <defs>
+                                        <linearGradient id="impactGrad" x1="0" y1="0" x2="1" y2="1">
+                                            <stop offset="0%" stopColor={rankGradient.from} />
+                                            <stop offset="100%" stopColor={rankGradient.to} />
+                                        </linearGradient>
+                                    </defs>
+                                    <circle cx="64" cy="64" r="52" stroke="currentColor" strokeWidth="12" fill="transparent" className="text-slate-100 dark:text-slate-800" />
+                                    <circle cx="64" cy="64" r="52" stroke="url(#impactGrad)" strokeWidth="12" fill="transparent"
+                                        strokeDasharray={circumference}
+                                        strokeDashoffset={strokeDashoffset}
+                                        strokeLinecap="round"
+                                        className="transition-all duration-1000 ease-out"
+                                        style={{ transform: 'rotate(-90deg)', transformOrigin: 'center' }}
+                                    />
+                                </svg>
+                                <div className="absolute flex flex-col items-center gap-1">
                                     <RankBadge rank={rankInfo.current} size="lg" showTitle={false} />
                                     <div className="text-center">
-                                        <p className="text-3xl font-black text-slate-800 dark:text-white leading-none">
+                                        <p className="text-3xl font-black text-slate-800 dark:text-white leading-none count-animate">
                                             <StatCounter value={stats.points} />
                                         </p>
                                         <p className="text-[10px] uppercase font-bold text-slate-400 tracking-widest">XP Points</p>
                                     </div>
                                 </div>
-                            </ProgressRing>
+                            </div>
                         </div>
 
                         {/* Next Rank Badge Bubble */}
                         {rankInfo.current !== 'Gold' && (
-                            <div className="absolute -bottom-2 -right-2 bg-white dark:bg-slate-800 p-1.5 rounded-full shadow-md border border-slate-100 dark:border-slate-700 animate-bounce-slow scale-75 md:scale-100">
+                            <div className="absolute -bottom-2 -right-2 glass-card p-1.5 rounded-full !border-slate-100 dark:!border-slate-700 scale-75 md:scale-100"
+                                style={{ animation: 'fadeUp 0.6s ease-out 0.5s both' }}>
                                 <div className="text-[8px] font-bold text-center mb-0.5 text-slate-400">NEXT</div>
                                 <RankBadge rank={rankInfo.next} size="sm" showTitle={false} />
                             </div>
                         )}
                     </div>
 
-                    {/* Text Info - Moved to side on Mobile, Bottom on Desktop */}
+                    {/* Rank Title & CTA */}
                     <div className="text-left md:text-center flex-1 flex flex-col items-start md:items-center">
-                        <h3 className="text-xl font-black bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-600 dark:from-white dark:to-slate-400 mb-1">
+                        <h3 className="text-xl font-black text-gradient-blue mb-1">
                             {rankInfo.current} Guardian
                         </h3>
                         <p className="text-xs text-slate-500 leading-relaxed max-w-[180px] md:max-w-none mb-4">
-                            You are <span className="font-bold text-slate-900 dark:text-white">{rankInfo.max - stats.points} XP</span> away from unlocking <span className="font-bold text-indigo-600 dark:text-indigo-400">{rankInfo.next}</span> level.
+                            <span className="font-bold text-slate-900 dark:text-white">{rankInfo.max - stats.points} XP</span> to unlock <span className="font-bold text-blue-600">{rankInfo.next}</span>
                         </p>
 
                         <Button
-                            className="bg-slate-900 hover:bg-slate-800 text-white rounded-xl h-9 text-xs font-bold shadow-lg shadow-slate-900/20 active:scale-95 transition-all"
+                            className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl h-9 text-xs font-bold shadow-lg shadow-blue-200/30 active:scale-95 transition-all"
                             onClick={() => navigate('/incidents')}
                         >
                             Report Issue +50 XP
@@ -134,82 +141,55 @@ export function ImpactPanel({ profile }: ImpactPanelProps) {
                 {/* RIGHT: Stats Grid & Badges */}
                 <div className="md:col-span-8 flex flex-col justify-between gap-6">
 
-                    {/* Stats Grid */}
+                    {/* 3-Col Pill Stats Grid */}
                     <div className="grid grid-cols-3 gap-3">
-                        <div className="bg-white/60 dark:bg-slate-800/60 rounded-2xl p-4 flex flex-col items-center justify-center border border-slate-100 dark:border-slate-700 shadow-sm transition-transform hover:-translate-y-1">
-                            <div className="bg-blue-50 text-blue-600 p-2 rounded-full mb-2">
+                        <div className="glass-card p-4 flex flex-col items-center justify-center hover:-translate-y-1 transition-transform duration-300">
+                            <div className="gradient-icon-blue text-white p-2 rounded-full mb-2">
                                 <Flag className="h-5 w-5" />
                             </div>
-                            <span className="text-2xl font-bold text-slate-800 dark:text-white">
+                            <span className="text-2xl font-black text-slate-800 dark:text-white count-animate">
                                 <StatCounter value={stats.reports} />
                             </span>
                             <span className="text-[10px] font-bold uppercase text-slate-400">Reports</span>
                         </div>
 
-                        <div className="bg-white/60 dark:bg-slate-800/60 rounded-2xl p-4 flex flex-col items-center justify-center border border-slate-100 dark:border-slate-700 shadow-sm transition-transform hover:-translate-y-1">
-                            <div className="bg-green-50 text-green-600 p-2 rounded-full mb-2">
+                        <div className="glass-card p-4 flex flex-col items-center justify-center hover:-translate-y-1 transition-transform duration-300">
+                            <div className="gradient-icon-green text-white p-2 rounded-full mb-2">
                                 <CheckCircle2 className="h-5 w-5" />
                             </div>
-                            <span className="text-2xl font-bold text-slate-800 dark:text-white">
+                            <span className="text-2xl font-black text-slate-800 dark:text-white count-animate">
                                 <StatCounter value={stats.resolved} />
                             </span>
                             <span className="text-[10px] font-bold uppercase text-slate-400">Resolved</span>
                         </div>
 
-                        <div className="bg-white/60 dark:bg-slate-800/60 rounded-2xl p-4 flex flex-col items-center justify-center border border-slate-100 dark:border-slate-700 shadow-sm transition-transform hover:-translate-y-1">
-                            <div className="bg-purple-50 text-purple-600 p-2 rounded-full mb-2">
+                        <div className="glass-card p-4 flex flex-col items-center justify-center hover:-translate-y-1 transition-transform duration-300">
+                            <div className="gradient-icon-indigo text-white p-2 rounded-full mb-2">
                                 <HeartHandshake className="h-5 w-5" />
                             </div>
-                            <span className="text-2xl font-bold text-slate-800 dark:text-white">
+                            <span className="text-2xl font-black text-slate-800 dark:text-white count-animate">
                                 <StatCounter value={stats.helped} />
                             </span>
                             <span className="text-[10px] font-bold uppercase text-slate-400">Helped</span>
                         </div>
                     </div>
 
-                    {/* Achievements Section */}
-                    <div className="bg-slate-50/50 dark:bg-slate-800/30 rounded-2xl p-4 border border-dashed border-slate-200 dark:border-slate-700">
+                    {/* Achievements */}
+                    <div className="glass-card p-4 !border-dashed">
                         <div className="flex items-center justify-between mb-3">
                             <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Recent Badges</span>
-                            <span className="text-[10px] text-indigo-500 font-bold cursor-pointer hover:underline" onClick={() => navigate('/profile')}>View All</span>
+                            <span className="text-[10px] text-blue-500 font-bold cursor-pointer hover:underline" onClick={() => navigate('/profile')}>View All</span>
                         </div>
                         <div className="flex items-center justify-between gap-2 overflow-x-auto hide-scrollbar py-2">
-                            <AchievementBadge
-                                icon={Zap}
-                                title="First Report"
-                                description="You filed your first civic report."
-                                isUnlocked={stats.reports > 0}
-                                dateUnlocked="Jan 2024"
-                            />
-                            <AchievementBadge
-                                icon={MapPin}
-                                title="Local Guide"
-                                description="Reported issues in 3 different zones."
-                                isUnlocked={stats.reports >= 3}
-                            />
-                            <AchievementBadge
-                                icon={AlertTriangle}
-                                title="Spotter"
-                                description="Reported 10+ active hazards."
-                                isUnlocked={stats.reports >= 10}
-                            />
-                            <AchievementBadge
-                                icon={LifeBuoy}
-                                title="Samaritan"
-                                description="Helped 50+ citizens."
-                                isUnlocked={stats.helped >= 50}
-                            />
-                            <AchievementBadge
-                                icon={CheckCircle2}
-                                title="Fixer"
-                                description="Had 5 reports marked resolved."
-                                isUnlocked={stats.resolved >= 5}
-                            />
+                            <AchievementBadge icon={Zap} title="First Report" description="You filed your first civic report." isUnlocked={stats.reports > 0} dateUnlocked="Jan 2024" />
+                            <AchievementBadge icon={MapPin} title="Local Guide" description="Reported issues in 3 different zones." isUnlocked={stats.reports >= 3} />
+                            <AchievementBadge icon={AlertTriangle} title="Spotter" description="Reported 10+ active hazards." isUnlocked={stats.reports >= 10} />
+                            <AchievementBadge icon={LifeBuoy} title="Samaritan" description="Helped 50+ citizens." isUnlocked={stats.helped >= 50} />
+                            <AchievementBadge icon={CheckCircle2} title="Fixer" description="Had 5 reports marked resolved." isUnlocked={stats.resolved >= 5} />
                         </div>
                     </div>
-
                 </div>
             </div>
-        </Card>
+        </div>
     );
 }

@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { LeaderboardRow } from "./LeaderboardRow";
@@ -6,10 +5,9 @@ import { LeaderboardTabs } from "./LeaderboardTabs";
 import { Trophy, Crown, Sparkles } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
-import { motion } from "framer-motion";
 import { db } from "@/lib/db";
+import { useAuth } from "@/contexts/AuthContext";
 
-// Mock Data Types
 interface HeroProfile {
     id: string;
     name: string;
@@ -21,56 +19,62 @@ interface HeroProfile {
     rank_change?: 'up' | 'down' | 'same';
 }
 
-// MOCK_HEROES replaced by Supabase data
-
 function PodiumItem({ hero, rank }: { hero: HeroProfile, rank: number }) {
     if (!hero) return null;
 
-    // Config for podium places
     const isFirst = rank === 1;
     const isSecond = rank === 2;
     const isThird = rank === 3;
 
+    const medalGradient = isFirst
+        ? "from-yellow-400 to-amber-600"
+        : isSecond
+            ? "from-slate-300 to-slate-500"
+            : "from-amber-600 to-amber-800";
+
+    const medalShadow = isFirst
+        ? "shadow-yellow-200/50"
+        : isSecond
+            ? "shadow-slate-200/50"
+            : "shadow-amber-200/50";
+
     return (
-        <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: rank * 0.1, duration: 0.5 }}
+        <div
             className={cn(
-                "relative flex flex-col items-center",
+                "relative flex flex-col items-center anim-fade-up",
                 isFirst ? "order-2 -mt-6 z-10" :
                     isSecond ? "order-1 mt-4" :
                         "order-3 mt-8"
             )}
+            style={{ animationDelay: `${rank * 100}ms` }}
         >
             {/* Crown/Medal */}
             <div className="mb-2">
-                {isFirst && <Crown className="w-8 h-8 text-yellow-500 fill-yellow-200 drop-shadow-lg animate-bounce" />}
+                {isFirst && <Crown className="w-8 h-8 text-yellow-500 fill-yellow-200 drop-shadow-lg" style={{ animation: 'fadeUp 0.6s ease-out 0.3s both' }} />}
                 {isSecond && <div className="text-2xl">🥈</div>}
                 {isThird && <div className="text-2xl">🥉</div>}
             </div>
 
-            {/* Avatar with Glow */}
+            {/* Avatar with Gradient Ring */}
             <div className={cn(
-                "relative rounded-full p-1",
-                isFirst ? "bg-gradient-to-b from-yellow-300 to-yellow-600 shadow-xl shadow-yellow-200/50" :
-                    isSecond ? "bg-gradient-to-b from-slate-300 to-slate-500 shadow-lg" :
-                        "bg-gradient-to-b from-amber-300 to-amber-700 shadow-lg"
+                "relative rounded-full p-1 bg-gradient-to-b shadow-xl",
+                medalGradient,
+                medalShadow
             )}>
                 <Avatar className={cn(
                     "border-4 border-white dark:border-slate-900",
                     isFirst ? "w-24 h-24" : "w-16 h-16"
                 )}>
                     <AvatarImage src={hero.avatar_url} />
-                    <AvatarFallback>{hero.name[0]}</AvatarFallback>
+                    <AvatarFallback className="text-lg font-bold">{hero.name[0]}</AvatarFallback>
                 </Avatar>
 
                 {/* Rank Badge */}
                 <div className={cn(
-                    "absolute -bottom-2 left-1/2 -translate-x-1/2 w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs border-2 border-white",
-                    isFirst ? "bg-yellow-500 text-white" :
-                        isSecond ? "bg-slate-500 text-white" :
-                            "bg-amber-600 text-white"
+                    "absolute -bottom-2 left-1/2 -translate-x-1/2 w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs border-2 border-white text-white",
+                    isFirst ? "bg-yellow-500" :
+                        isSecond ? "bg-slate-500" :
+                            "bg-amber-600"
                 )}>
                     {rank}
                 </div>
@@ -78,57 +82,52 @@ function PodiumItem({ hero, rank }: { hero: HeroProfile, rank: number }) {
 
             {/* Name & Stats */}
             <div className="text-center mt-3">
-                <h3 className={cn("font-bold text-slate-900 dark:text-white line-clamp-1 max-w-[120px]", isFirst ? "text-lg" : "text-sm")}>
+                <h3 className={cn("font-extrabold text-slate-900 dark:text-white line-clamp-1 max-w-[120px]", isFirst ? "text-lg" : "text-sm")}>
                     {hero.name}
                 </h3>
-                <div className="flex items-center justify-center gap-1 font-bold text-teal-600">
+                <div className="flex items-center justify-center gap-1 font-bold text-blue-600">
                     <Sparkles className="w-3 h-3" />
-                    <span>{hero.points}</span>
+                    <span className="count-animate">{hero.points}</span>
                 </div>
             </div>
-        </motion.div>
+        </div>
     );
 }
-
-import { useAuth } from "@/contexts/AuthContext";
 
 export function CityHeroLeaderboard() {
     const { user } = useAuth();
     const [activeTab, setActiveTab] = useState<'weekly' | 'monthly'>('weekly');
     const { data: heroes = [], isLoading: loading } = useQuery({
         queryKey: ['heroes', 'leaderboard', activeTab],
-        queryFn: () => db.getHeroes(10), // The db function already handles timeouts/retries
+        queryFn: () => db.getHeroesSimple(10),
     });
 
     const podiumHeroes = heroes.slice(0, 3);
 
     return (
-        <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="rounded-[2.5rem] bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-slate-100 dark:border-slate-800 p-6 shadow-sm overflow-hidden relative"
-        >
+        <div className="glass-card p-6 overflow-hidden relative">
             {/* Header */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
                 <div>
                     <h2 className="text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2">
-                        <Trophy className="w-6 h-6 text-yellow-500 fill-current" />
+                        <div className="gradient-icon-orange p-2 rounded-xl text-white">
+                            <Trophy className="w-5 h-5" />
+                        </div>
                         City Heroes
                     </h2>
-                    <p className="text-sm text-slate-500 font-medium">Top contributors making Indore safer</p>
+                    <p className="text-sm text-slate-500 font-medium mt-1">Top contributors making Indore safer</p>
                 </div>
                 <LeaderboardTabs activeTab={activeTab} onTabChange={setActiveTab} />
             </div>
 
             {loading ? (
                 <div className="h-[400px] flex items-center justify-center">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600"></div>
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
                 </div>
             ) : heroes.length === 0 ? (
                 <div className="h-[200px] flex flex-col items-center justify-center text-slate-400">
                     <Trophy className="w-12 h-12 mb-3 opacity-20" />
-                    <p className="text-sm font-medium">No heroes found properly.</p>
+                    <p className="text-sm font-medium">No heroes found.</p>
                     <p className="text-xs opacity-70">Be the first to earn points!</p>
                 </div>
             ) : (
@@ -140,21 +139,13 @@ export function CityHeroLeaderboard() {
                         {podiumHeroes[2] && <PodiumItem hero={podiumHeroes[2]} rank={3} />}
                     </div>
 
-                    {/* List */}
-                    <div className="bg-slate-50/50 dark:bg-slate-800/30 rounded-2xl p-4 border border-slate-100 dark:border-slate-800">
+                    {/* Compact List for 4-7 */}
+                    <div className="glass-card p-4 !rounded-2xl">
                         <div className="space-y-1">
-                            {heroes.map((hero, index) => {
-                                const rank = index + 1;
-                                // List heroes ranked 4 onwards
-                                if (rank <= 3) return null;
-
+                            {heroes.slice(3, 7).map((hero, index) => {
+                                const rank = index + 4;
                                 return (
-                                    <motion.div
-                                        key={hero.id}
-                                        initial={{ opacity: 0, x: -10 }}
-                                        animate={{ opacity: 1, x: 0 }}
-                                        transition={{ delay: index * 0.05 }}
-                                    >
+                                    <div key={hero.id} className="anim-fade-up" style={{ animationDelay: `${rank * 50}ms` }}>
                                         <LeaderboardRow
                                             rank={rank}
                                             name={hero.name}
@@ -164,24 +155,17 @@ export function CityHeroLeaderboard() {
                                             resolved={hero.resolved_count}
                                             isCurrentUser={hero.id === user?.id}
                                         />
-                                    </motion.div>
+                                    </div>
                                 );
                             })}
                         </div>
-
-                        {/* Always show current user if they are not in the list (e.g. they are rank 50) - simplified for demo */}
-                        {/* {heroes.find(h => h.id === '4') && heroes.findIndex(h => h.id === '4') > 6 && (
-                             <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
-                                <LeaderboardRow ... /> 
-                             </div>
-                        )} */}
                     </div>
                 </>
             )}
 
             {/* Decorative Background Gradients */}
-            <div className="absolute top-0 right-0 w-64 h-64 bg-yellow-400/10 rounded-full blur-3xl -z-10 -translate-y-1/2 translate-x-1/2" />
-            <div className="absolute bottom-0 left-0 w-64 h-64 bg-teal-400/10 rounded-full blur-3xl -z-10 translate-y-1/2 -translate-x-1/2" />
-        </motion.div>
+            <div className="absolute top-0 right-0 w-64 h-64 bg-yellow-400/8 rounded-full blur-3xl -z-10 -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+            <div className="absolute bottom-0 left-0 w-64 h-64 bg-blue-400/8 rounded-full blur-3xl -z-10 translate-y-1/2 -translate-x-1/2 pointer-events-none" />
+        </div>
     );
 }

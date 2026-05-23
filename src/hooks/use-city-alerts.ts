@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { CloudLightning, Construction, AlertTriangle, Zap, Info, Newspaper } from 'lucide-react';
 
 // Types
@@ -67,7 +67,6 @@ async function fetchWeatherAlerts(): Promise<Alert[]> {
 async function fetchNewsAlerts(): Promise<Alert[]> {
     try {
         // Query for Indore specific topics: Traffic, Police, Accident, Nagar Nigam, Power
-        // Query for Indore specific topics - broadened for more real-time updates
         const rssUrl = encodeURIComponent('https://news.google.com/rss/search?q=Indore+when:2d&hl=en-IN&gl=IN&ceid=IN:en');
         const res = await fetch(`https://api.rss2json.com/v1/api.json?rss_url=${rssUrl}`);
         const data = await res.json();
@@ -128,28 +127,11 @@ async function fetchNewsAlerts(): Promise<Alert[]> {
     }
 }
 
-// In-memory cache
-let cachedData: Alert[] | null = null;
-let lastFetchTime = 0;
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
-
 export function useCityAlerts() {
-    const [alerts, setAlerts] = useState<Alert[]>(cachedData || []);
-    // Only load if we don't have cached data
-    const [loading, setLoading] = useState(!cachedData);
 
-    const refresh = async (force = false) => {
-        const now = Date.now();
-
-        // Return cached data if valid and not forcing
-        if (!force && cachedData && (now - lastFetchTime < CACHE_DURATION)) {
-            setAlerts(cachedData);
-            setLoading(false);
-            return;
-        }
-
-        setLoading(true);
-        try {
+    const { data: alerts = [], isLoading: loading, refetch } = useQuery({
+        queryKey: ['city-alerts'],
+        queryFn: async () => {
             const [weather, news] = await Promise.all([
                 fetchWeatherAlerts(),
                 fetchNewsAlerts()
@@ -172,22 +154,11 @@ export function useCityAlerts() {
                     icon: Info
                 });
             }
+            return combined;
+        },
+        staleTime: 5 * 60 * 1000, // 5 minutes
+    });
 
-            // Update cache
-            cachedData = combined;
-            lastFetchTime = Date.now();
-
-            setAlerts(combined);
-        } catch (e) {
-            console.error(e);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        refresh();
-    }, []);
-
-    return { alerts, loading, refresh: () => refresh(true) };
+    return { alerts, loading, refresh: () => refetch() };
 }
+

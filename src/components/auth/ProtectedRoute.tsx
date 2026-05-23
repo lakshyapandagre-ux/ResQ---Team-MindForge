@@ -22,7 +22,8 @@ export function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (profileError) {
+  // Only hard block if there is a profile error AND no fallback profile was generated
+  if (profileError && !profile) {
     return (
       <div className="h-screen w-full flex flex-col items-center justify-center p-4 text-center">
         <h2 className="text-xl font-bold text-slate-800 mb-2">Connection Error</h2>

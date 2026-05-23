@@ -70,34 +70,37 @@ export function Index() {
     }, []);
 
     return (
-        <div className="min-h-screen bg-secondary/30 font-sans text-foreground">
+        <div className="flex h-screen overflow-hidden bg-secondary/30 font-sans text-foreground">
             <LiveLocationStreamer isActive={sosActive} />
-            {/* Fixed Header */}
-            <div className="sticky top-0 z-50 w-full">
-                <Header
-                    mode={mode}
-                    onMenuToggle={() => setIsSidebarOpen(!isSidebarOpen)}
-                />
-            </div>
 
-            <div className="flex pt-0">
-                {/* Fixed Sidebar */}
-                <Sidebar
-                    mode={mode}
-                    isOpen={isSidebarOpen}
-                    activeItem={activeItem}
-                    onItemClick={(id) => {
-                        setIsSidebarOpen(false);
-                        if (id === 'dashboard') navigate('/');
-                        else if (id === 'command') navigate('/emergency');
-                        else navigate(`/${id}`);
-                    }}
-                    onClose={() => setIsSidebarOpen(false)}
-                />
+            {/* Fixed Sidebar */}
+            <Sidebar
+                mode={mode}
+                isOpen={isSidebarOpen}
+                activeItem={activeItem}
+                onItemClick={(id) => {
+                    setIsSidebarOpen(false);
+                    if (id === 'dashboard') navigate('/');
+                    else if (id === 'command') navigate('/emergency');
+                    else navigate(`/${id}`);
+                }}
+                onClose={() => setIsSidebarOpen(false)}
+            />
 
-                {/* Main Content Area */}
-                <main className="flex-1 transition-all duration-300 md:ml-[280px] p-4 sm:p-6 lg:p-8 w-full overflow-y-auto h-[calc(100vh-64px)]">
-                    <div className="max-w-[1600px] mx-auto w-full">
+            {/* Right column: header sticky + content scrolls */}
+            <div className="flex flex-col flex-1 min-w-0 h-screen overflow-hidden md:ml-[280px]">
+                
+                {/* Fixed Header */}
+                <div className="sticky top-0 z-30 flex-shrink-0 w-full">
+                    <Header
+                        mode={mode}
+                        onMenuToggle={() => setIsSidebarOpen(!isSidebarOpen)}
+                    />
+                </div>
+
+                {/* Main Content Area - only this scrolls */}
+                <main className="flex-1 overflow-y-auto overflow-x-hidden transition-all duration-300 w-full">
+                    <div className="p-4 sm:p-6 lg:p-8 pb-24 max-w-[1600px] mx-auto w-full">
                         {(activeItem === 'dashboard' || activeItem === 'command') ? (
                             <Dashboard mode={mode} />
                         ) : activeItem === 'complaints' ? (
@@ -133,14 +136,16 @@ export function Index() {
                     </div>
                 </main>
 
-                <BottomNav
-                    mode={mode}
-                    onModeChange={(m) => {
-                        if (m === 'emergency') navigate('/emergency');
-                        else navigate('/');
-                    }}
-                    onProfileClick={() => navigate('/profile')}
-                />
+                <div className="md:hidden fixed bottom-0 left-0 right-0 z-50">
+                    <BottomNav
+                        mode={mode}
+                        onModeChange={(m) => {
+                            if (m === 'emergency') navigate('/emergency');
+                            else navigate('/');
+                        }}
+                        onProfileClick={() => navigate('/profile')}
+                    />
+                </div>
             </div>
         </div>
     );

@@ -7,8 +7,6 @@ import {
     User,
     Settings,
     LogOut,
-    Sun,
-    Moon,
     Ambulance,
     Flame,
     CheckCircle2,
@@ -40,34 +38,16 @@ import { useNavigate } from "react-router-dom";
 
 interface HeaderProps {
     mode: AppMode;
-    onModeChange: (mode: AppMode) => void;
     onMenuToggle: () => void;
 }
 
-export function Header({ mode, onMenuToggle }: Omit<HeaderProps, 'onModeChange'>) {
+export function Header({ mode, onMenuToggle }: HeaderProps) {
     const { profile, signOut } = useAuth();
     const navigate = useNavigate();
-    const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-        if (typeof window !== 'undefined') {
-            return (localStorage.getItem('theme') as 'light' | 'dark') || 'light';
-        }
-        return 'light';
-    });
 
     const [isSOSOpen, setIsSOSOpen] = useState(false);
 
     const isEmergency = mode === 'emergency';
-
-    useEffect(() => {
-        const root = window.document.documentElement;
-        root.classList.remove('light', 'dark');
-        root.classList.add(theme);
-        localStorage.setItem('theme', theme);
-    }, [theme]);
-
-    const toggleTheme = () => {
-        setTheme(prev => prev === 'light' ? 'dark' : 'light');
-    };
 
     // Notifications State
     const [notifications, setNotifications] = useState<any[]>([]);
@@ -151,11 +131,8 @@ export function Header({ mode, onMenuToggle }: Omit<HeaderProps, 'onModeChange'>
 
     return (
         <header className={cn(
-            "sticky top-0 z-50 w-full h-16 border-b transition-all duration-300",
-            "backdrop-blur-md supports-[backdrop-filter]:bg-background/60",
-            isEmergency
-                ? "bg-slate-900/90 border-red-900/50"
-                : "bg-background/70 border-border/40"
+            "sticky top-0 z-30 w-full h-16 bg-white/95 backdrop-blur-md border-b border-gray-100 transition-shadow duration-300",
+            isEmergency && "bg-slate-900/90 border-red-900/50"
         )}>
             <div className="container mx-auto h-full px-4 flex items-center justify-between gap-4">
 
@@ -195,18 +172,6 @@ export function Header({ mode, onMenuToggle }: Omit<HeaderProps, 'onModeChange'>
 
                 {/* 3. RIGHT SECTION - Actions */}
                 <div className="flex items-center gap-2 sm:gap-3">
-
-                    {/* Theme Toggle */}
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={toggleTheme}
-                        className="rounded-full hover:bg-muted/50 hidden sm:flex transition-transform hover:rotate-12"
-                    >
-                        <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0 text-orange-500" />
-                        <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100 text-slate-400" />
-                        <span className="sr-only">Toggle theme</span>
-                    </Button>
 
                     {/* SOS Button (Always Visible) */}
                     <Dialog open={isSOSOpen} onOpenChange={setIsSOSOpen}>
@@ -253,7 +218,6 @@ export function Header({ mode, onMenuToggle }: Omit<HeaderProps, 'onModeChange'>
                                 ))}
                             </div>
 
-                            {/* Navigation Link to Emergency Mode */}
                             {/* Navigation Link to Emergency Mode */}
                             <div className="mt-4 pt-1">
                                 <Button
