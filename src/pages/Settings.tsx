@@ -228,16 +228,7 @@ export default function Settings() {
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                    <div className="flex items-center justify-between">
-                        <div className="space-y-0.5">
-                            <Label className="text-base">Dark Mode</Label>
-                            <p className="text-xs text-muted-foreground">Enable dark theme for the application</p>
-                        </div>
-                        <Switch
-                            checked={settings?.dark_mode || false}
-                            onCheckedChange={(val: boolean) => updateSetting("dark_mode", val)}
-                        />
-                    </div>
+
                     <div className="flex items-center justify-between">
                         <div className="space-y-0.5">
                             <Label className="flex items-center gap-2 text-base">

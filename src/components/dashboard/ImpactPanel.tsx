@@ -7,7 +7,6 @@ import {
     AlertTriangle,
     LifeBuoy
 } from "lucide-react";
-import { ProgressRing } from "./ProgressRing";
 import { RankBadge, type Rank } from "./RankBadge";
 import { StatCounter } from "./StatCounter";
 import { AchievementBadge } from "./AchievementBadge";
